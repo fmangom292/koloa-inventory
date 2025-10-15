@@ -1,0 +1,597 @@
+import { useState, useEffect } from 'react';
+import { ordersAPI } from '../utils/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+/**
+ * Página principal para gestionar pedidos de reposición
+ * @function OrdersPage
+ * @param {Object} props - Props del componente
+ * @param {Function} props.refreshInventory - Función para refrescar el inventario
+ * @returns {JSX.Element} Página con lista de pedidos, filtros y acciones
+ * @description Componente que muestra todos los pedidos con opciones para filtrar,
+ * confirmar recepción y ver detalles de cada pedido
+ */
+const OrdersPage = ({ refreshInventory }) => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed', 'cancelled'
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmingOrder, setConfirmingOrder] = useState(null);
+  const [confirmNotes, setConfirmNotes] = useState('');
+
+  /**
+   * Carga todos los pedidos desde la API
+   * @function fetchOrders
+   * @async
+   * @returns {Promise<void>} No retorna valor
+   */
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await ordersAPI.getAll();
+      setOrders(data);
+      setError(null);
+    } catch (err) {
+      setError('Error cargando pedidos');
+      console.error('Error fetching orders:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  /**
+   * Filtra los pedidos según el filtro seleccionado
+   * @function filteredOrders
+   * @returns {Array} Lista de pedidos filtrada
+   */
+  const filteredOrders = orders.filter(order => {
+    if (filter === 'all') return true;
+    return order.status === filter;
+  });
+
+  /**
+   * Confirma la recepción de un pedido
+   * @function handleConfirmOrder
+   * @async
+   * @param {Object} order - Pedido a confirmar
+   * @returns {Promise<void>} No retorna valor
+   */
+  const handleConfirmOrder = async (order) => {
+    setConfirmingOrder(order);
+    setShowConfirmModal(true);
+  };
+
+  /**
+   * Ejecuta la confirmación del pedido con notas opcionales
+   * @function executeConfirmation
+   * @async
+   * @returns {Promise<void>} No retorna valor
+   */
+  const executeConfirmation = async () => {
+    try {
+      setLoading(true);
+      const result = await ordersAPI.confirm(confirmingOrder.id, { 
+        notes: confirmNotes 
+      });
+      
+      // Actualizar la lista de pedidos
+      await fetchOrders();
+      
+      // Refrescar el inventario en el Dashboard
+      if (refreshInventory) {
+        await refreshInventory();
+      }
+      
+      // Mostrar mensaje de éxito
+      alert(`Pedido ${confirmingOrder.orderNumber} confirmado. Stock actualizado para ${result.stockUpdates.length} productos.`);
+      
+      // Cerrar modal
+      setShowConfirmModal(false);
+      setConfirmingOrder(null);
+      setConfirmNotes('');
+    } catch (error) {
+      alert(`Error confirmando pedido: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Cancela un pedido pendiente
+   * @function handleCancelOrder
+   * @async
+   * @param {Object} order - Pedido a cancelar
+   * @returns {Promise<void>} No retorna valor
+   */
+  const handleCancelOrder = async (order) => {
+    const reason = prompt(`¿Razón para cancelar el pedido ${order.orderNumber}?`);
+    if (reason === null) return; // Usuario canceló
+
+    try {
+      setLoading(true);
+      await ordersAPI.cancel(order.id, { reason });
+      await fetchOrders();
+      alert(`Pedido ${order.orderNumber} cancelado.`);
+    } catch (error) {
+      alert(`Error cancelando pedido: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Muestra los detalles de un pedido en modal
+   * @function handleViewDetails
+   * @param {Object} order - Pedido a mostrar
+   * @returns {void} No retorna valor
+   */
+  const handleViewDetails = (order) => {
+    setSelectedOrder(order);
+    setShowDetailModal(true);
+  };
+
+  /**
+   * Obtiene el color del badge según el estado del pedido
+   * @function getStatusBadgeColor
+   * @param {string} status - Estado del pedido
+   * @returns {string} Clases CSS para el badge
+   */
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  /**
+   * Traduce el estado del pedido al español
+   * @function getStatusText
+   * @param {string} status - Estado del pedido en inglés
+   * @returns {string} Estado traducido al español
+   */
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendiente';
+      case 'completed':
+        return 'Completado';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  };
+
+  if (loading && orders.length === 0) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <main className="container mx-auto px-4 py-6 max-w-7xl">
+      {/* Header */}
+      <div className="mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Gestión de Pedidos</h1>
+          <p className="text-gray-300 mt-1">
+            Historial y seguimiento de pedidos de reposición
+          </p>
+        </div>
+        <div className="flex items-center space-x-4 mt-4">
+          <div className="text-sm text-gray-300">
+            Total: {filteredOrders.length} pedidos
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-600 text-white p-4 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div className="bg-gray-800 rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Filtros</h2>
+        <div className="flex gap-2">
+          {[
+            { key: 'all', label: 'Todos', count: orders.length },
+            { key: 'pending', label: 'Pendientes', count: orders.filter(o => o.status === 'pending').length },
+            { key: 'completed', label: 'Completados', count: orders.filter(o => o.status === 'completed').length },
+            { key: 'cancelled', label: 'Cancelados', count: orders.filter(o => o.status === 'cancelled').length }
+          ].map(filterOption => (
+            <button
+              key={filterOption.key}
+              onClick={() => setFilter(filterOption.key)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center ${
+                filter === filterOption.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {filterOption.label}
+              <span className="ml-2 bg-gray-600 px-2 py-0.5 rounded-full text-xs">
+                {filterOption.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista de Pedidos */}
+      <div className="bg-gray-800 rounded-lg overflow-hidden">
+        {filteredOrders.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">
+            <p className="text-lg">No hay pedidos que mostrar</p>
+            <p className="text-sm mt-2">
+              {filter === 'all' 
+                ? 'Aún no se han creado pedidos en el sistema.'
+                : `No hay pedidos con estado "${getStatusText(filter).toLowerCase()}".`
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Pedido
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Tipo/Marca
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Items
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-700 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-white">
+                          {order.orderNumber}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          por {order.user.name}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-white">
+                        {order.type === 'general' ? 'General' : `Marca: ${order.brand}`}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                      {order.totalItems} unidades
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                      {order.totalPrice.toFixed(2)}€
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div>{new Date(order.createdAt).toLocaleDateString('es-ES')}</div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(order.createdAt).toLocaleTimeString('es-ES')}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleViewDetails(order)}
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          title="Ver detalles"
+                        >
+                          👁️
+                        </button>
+                        {order.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleConfirmOrder(order)}
+                              className="text-green-400 hover:text-green-300 transition-colors"
+                              title="Confirmar recepción"
+                            >
+                              ✅
+                            </button>
+                            <button
+                              onClick={() => handleCancelOrder(order)}
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                              title="Cancelar pedido"
+                            >
+                              ❌
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Detalles */}
+      {showDetailModal && selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedOrder(null);
+          }}
+        />
+      )}
+
+      {/* Modal de Confirmación */}
+      {showConfirmModal && confirmingOrder && (
+        <ConfirmOrderModal
+          order={confirmingOrder}
+          notes={confirmNotes}
+          onNotesChange={setConfirmNotes}
+          onConfirm={executeConfirmation}
+          onCancel={() => {
+            setShowConfirmModal(false);
+            setConfirmingOrder(null);
+            setConfirmNotes('');
+          }}
+          loading={loading}
+        />
+      )}
+    </main>
+  );
+};
+
+/**
+ * Modal para mostrar los detalles completos de un pedido
+ * @function OrderDetailModal
+ * @param {Object} props - Props del componente
+ * @param {Object} props.order - Pedido a mostrar
+ * @param {Function} props.onClose - Función para cerrar el modal
+ * @returns {JSX.Element} Modal con detalles del pedido
+ */
+const OrderDetailModal = ({ order, onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white">
+            Detalles del Pedido {order.orderNumber}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {/* Información General */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-gray-900 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Información General</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Número:</span>
+                  <span className="text-white">{order.orderNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Tipo:</span>
+                  <span className="text-white">
+                    {order.type === 'general' ? 'General' : `Marca: ${order.brand}`}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Creado por:</span>
+                  <span className="text-white">{order.user.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Estado:</span>
+                  <span className="text-white">{order.status === 'pending' ? 'Pendiente' : order.status === 'completed' ? 'Completado' : 'Cancelado'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Totales</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Items:</span>
+                  <span className="text-white">{order.totalItems} unidades</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Precio Total:</span>
+                  <span className="text-white">{order.totalPrice.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Fecha Creación:</span>
+                  <span className="text-white">
+                    {new Date(order.createdAt).toLocaleString('es-ES')}
+                  </span>
+                </div>
+                {order.completedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Fecha Completado:</span>
+                    <span className="text-white">
+                      {new Date(order.completedAt).toLocaleString('es-ES')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Items del Pedido */}
+          <div className="bg-gray-900 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-white mb-3">Productos del Pedido</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left py-2 text-gray-400">Producto</th>
+                    <th className="text-center py-2 text-gray-400">Marca</th>
+                    <th className="text-center py-2 text-gray-400">Peso</th>
+                    <th className="text-center py-2 text-gray-400">Cantidad</th>
+                    <th className="text-right py-2 text-gray-400">Precio Unit.</th>
+                    <th className="text-right py-2 text-gray-400">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item) => (
+                    <tr key={item.id} className="border-b border-gray-800">
+                      <td className="py-2 text-white">{item.inventoryItem.nombre}</td>
+                      <td className="text-center py-2 text-gray-300">{item.inventoryItem.marca}</td>
+                      <td className="text-center py-2 text-gray-300">{item.inventoryItem.peso}g</td>
+                      <td className="text-center py-2 text-yellow-400">{item.quantityOrdered}</td>
+                      <td className="text-right py-2 text-gray-300">{item.priceAtTime.toFixed(2)}€</td>
+                      <td className="text-right py-2 text-green-400">
+                        {(item.quantityOrdered * item.priceAtTime).toFixed(2)}€
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Notas */}
+          {order.notes && (
+            <div className="bg-gray-900 rounded-lg p-4 mt-6">
+              <h3 className="text-lg font-medium text-white mb-3">Notas</h3>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{order.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end p-6 border-t border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Modal para confirmar la recepción de un pedido
+ * @function ConfirmOrderModal
+ * @param {Object} props - Props del componente
+ * @param {Object} props.order - Pedido a confirmar
+ * @param {string} props.notes - Notas de confirmación
+ * @param {Function} props.onNotesChange - Función para cambiar las notas
+ * @param {Function} props.onConfirm - Función para confirmar el pedido
+ * @param {Function} props.onCancel - Función para cancelar la confirmación
+ * @param {boolean} props.loading - Estado de carga
+ * @returns {JSX.Element} Modal de confirmación
+ */
+const ConfirmOrderModal = ({ order, notes, onNotesChange, onConfirm, onCancel, loading }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white">
+            Confirmar Recepción
+          </h2>
+          <p className="text-gray-300 mt-1">
+            Pedido: {order.orderNumber}
+          </p>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="mb-4">
+            <p className="text-gray-300 text-sm mb-4">
+              ¿Confirmas que has recibido este pedido? El stock se actualizará automáticamente.
+            </p>
+            <div className="bg-gray-900 rounded-lg p-3 mb-4">
+              <div className="text-sm text-gray-400 mb-1">Resumen del pedido:</div>
+              <div className="text-white">
+                <div>{order.totalItems} unidades totales</div>
+                <div>{order.totalPrice.toFixed(2)}€ valor estimado</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Notas de recepción (opcional):
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder="Ej: Todo correcto, algunos productos con fecha próxima..."
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+              rows={3}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-700">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Confirmando...
+              </>
+            ) : (
+              'Confirmar Recepción'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OrdersPage;

@@ -138,4 +138,72 @@ export const inventoryAPI = {
   }
 };
 
+/**
+ * API de pedidos con operaciones para gestionar órdenes de compra
+ * @namespace ordersAPI
+ */
+// Funciones de pedidos
+export const ordersAPI = {
+  /**
+   * Obtiene todos los pedidos
+   * @function getAll
+   * @async
+   * @returns {Promise<Array>} Lista de todos los pedidos con información relacionada
+   */
+  getAll: async () => {
+    const response = await api.get('/orders');
+    return response.data;
+  },
+  
+  /**
+   * Obtiene un pedido específico por ID
+   * @function getById
+   * @async
+   * @param {number} id - ID del pedido
+   * @returns {Promise<Object>} Pedido completo con todos sus detalles
+   */
+  getById: async (id) => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+  
+  /**
+   * Crea un nuevo pedido
+   * @function create
+   * @async
+   * @param {Object} orderData - Datos del pedido a crear
+   * @returns {Promise<Object>} Pedido creado con número asignado
+   */
+  create: async (orderData) => {
+    const response = await api.post('/orders', orderData);
+    return response.data;
+  },
+  
+  /**
+   * Confirma la recepción de un pedido
+   * @function confirm
+   * @async
+   * @param {number} id - ID del pedido a confirmar
+   * @param {Object} data - Datos de confirmación (notas opcionales)
+   * @returns {Promise<Object>} Pedido actualizado y cambios en el stock
+   */
+  confirm: async (id, data = {}) => {
+    const response = await api.put(`/orders/${id}/confirm`, data);
+    return response.data;
+  },
+  
+  /**
+   * Cancela un pedido pendiente
+   * @function cancel
+   * @async
+   * @param {number} id - ID del pedido a cancelar
+   * @param {Object} data - Datos de cancelación (razón opcional)
+   * @returns {Promise<Object>} Pedido actualizado con status cancelado
+   */
+  cancel: async (id, data = {}) => {
+    const response = await api.put(`/orders/${id}/cancel`, data);
+    return response.data;
+  }
+};
+
 export default api;

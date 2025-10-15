@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ordersAPI } from '../utils/api';
 
 const ReportsModal = ({ isOpen, onClose, items }) => {
   const [selectedBrand, setSelectedBrand] = useState('');

@@ -18,6 +18,9 @@ model User {
   blocked        Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  
+  // Relación con pedidos
+  orders         Order[]
 
   @@unique([code])
 }
@@ -33,4 +36,39 @@ model InventoryItem {
   precio    Float    @default(0) // Precio del producto
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Relación con items de pedidos
+  orderItems OrderItem[]
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  orderNumber String      @unique // ej: "ORD-2025-001"
+  type        String      // "general" o "brand"
+  brand       String?     // null si es general, nombre de la marca si es específico
+  status      String      @default("pending") // "pending", "completed", "cancelled"
+  totalItems  Int         // total de unidades pedidas
+  totalPrice  Float       // precio total estimado
+  createdAt   DateTime    @default(now())
+  completedAt DateTime?   // fecha cuando se marcó como completado
+  notes       String?     // notas adicionales del pedido
+  
+  // Relaciones
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id              Int           @id @default(autoincrement())
+  orderId         Int
+  inventoryItemId Int
+  quantityOrdered Int           // cantidad pedida
+  priceAtTime     Float         // precio del producto cuando se hizo el pedido
+  
+  // Relaciones
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  @@unique([orderId, inventoryItemId]) // Un producto por pedido
 }

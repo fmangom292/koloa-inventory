@@ -6,12 +6,14 @@ import InventoryList from '../components/InventoryList';
 import ProductModal from '../components/ProductModal';
 import ReportsModal from '../components/ReportsModal';
 import OrderModal from '../components/OrderModal';
+import OrdersPage from './OrdersPage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useEffect, useRef } from 'react';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { items, loading, error, createItem, updateItem, deleteItem, clearError } = useInventory();
+  const { items, loading, error, createItem, updateItem, deleteItem, clearError, fetchItems } = useInventory();
+  const [activeView, setActiveView] = useState('inventory'); // 'inventory' | 'orders'
   const [showModal, setShowModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -128,6 +130,38 @@ const Dashboard = () => {
     <div className="min-h-screen bg-dark-950">
       <Header user={user} />
       
+      {/* Navigation Tab Bar */}
+      <div className="bg-gray-800 border-b border-gray-700">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="flex space-x-1 py-2">
+            <button
+              onClick={() => setActiveView('inventory')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeView === 'inventory'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              📦 Inventario
+            </button>
+            <button
+              onClick={() => setActiveView('orders')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeView === 'orders'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              🛒 Pedidos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Conditional Content */}
+      {activeView === 'orders' ? (
+        <OrdersPage refreshInventory={fetchItems} />
+      ) : (
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Alerts for low stock */}
         {lowStockItems.length > 0 && filter !== 'low-stock' && (
@@ -449,6 +483,7 @@ const Dashboard = () => {
           items={items}
         />
       </main>
+      )}
     </div>
   );
 };

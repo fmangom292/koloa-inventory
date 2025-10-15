@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ordersAPI } from '../utils/api';
 
 /**
  * Modal para generar pedidos de reposición de productos
@@ -18,6 +19,7 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   const [orderType, setOrderType] = useState('general'); // 'general' or 'brand'
   const [editableQuantities, setEditableQuantities] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Usar useMemo para evitar recálculos innecesarios
   const itemsNeedingRestock = useMemo(() => {
@@ -116,14 +118,66 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   };
 
   /**
+   * Guarda el pedido en la base de datos
+   * @function saveOrderToDatabase
+   * @async
+   * @param {string} type - Tipo de pedido ("general" o "brand")
+   * @param {string|null} brand - Marca específica o null para pedidos generales
+   * @returns {Promise<Object>} Pedido guardado o null si hay error
+   * @description Crea un pedido en la base de datos con todos los items que tienen cantidad > 0
+   */
+  const saveOrderToDatabase = async (type, brand = null) => {
+    try {
+      setIsSaving(true);
+      
+      // Preparar items del pedido (solo los que tienen cantidad > 0)
+      const orderItems = itemsNeedingRestock
+        .filter(item => {
+          const quantity = editableQuantities[item.id] || 0;
+          return quantity > 0;
+        })
+        .map(item => ({
+          inventoryItemId: item.id,
+          quantityOrdered: editableQuantities[item.id]
+        }));
+
+      if (orderItems.length === 0) {
+        throw new Error('No hay productos con cantidad para pedir');
+      }
+
+      const orderData = {
+        type,
+        brand,
+        items: orderItems,
+        notes: `Pedido generado desde ${type === 'general' ? 'modal general' : `modal de marca ${brand}`}`
+      };
+
+      const savedOrder = await ordersAPI.create(orderData);
+      return savedOrder;
+    } catch (error) {
+      console.error('Error guardando pedido:', error);
+      alert(`Error al guardar el pedido: ${error.message}`);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /**
    * Genera y descarga un PDF del pedido general con todas las marcas
    * @function generateGeneralOrderPDF
    * @returns {void} No retorna valor, descarga el archivo PDF
    * @description Crea un PDF profesional con productos agrupados por marca,
-   * incluyendo solo nombre, peso y cantidad (sin precios)
+   * incluyendo solo nombre, peso y cantidad (sin precios). También guarda el pedido en BD.
    */
   // Generar PDF del pedido general
-  const generateGeneralOrderPDF = () => {
+  const generateGeneralOrderPDF = async () => {
+    // Primero guardar el pedido en la base de datos
+    const savedOrder = await saveOrderToDatabase('general');
+    if (!savedOrder) {
+      return; // Error ya mostrado en saveOrderToDatabase
+    }
+
     const doc = new jsPDF();
     const orderData = generateGeneralOrder();
 
@@ -139,9 +193,10 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(`Fecha del pedido: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
-    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 40);
+    doc.text(`Número de pedido: ${savedOrder.orderNumber}`, 20, 40);
+    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 45);
 
-    let yPosition = 55;
+    let yPosition = 60;
     let totalItems = 0;
 
     orderData.forEach((brandGroup, brandIndex) => {
@@ -215,11 +270,17 @@ const OrderModal = ({ isOpen, onClose, items }) => {
    * @function generateBrandOrderPDF
    * @returns {void} No retorna valor, descarga el archivo PDF
    * @description Crea un PDF con productos de una sola marca,
-   * formato simplificado con nombre, peso y cantidad
+   * formato simplificado con nombre, peso y cantidad. También guarda el pedido en BD.
    */
   // Generar PDF del pedido por marca
-  const generateBrandOrderPDF = () => {
+  const generateBrandOrderPDF = async () => {
     if (!selectedBrand) return;
+    
+    // Primero guardar el pedido en la base de datos
+    const savedOrder = await saveOrderToDatabase('brand', selectedBrand);
+    if (!savedOrder) {
+      return; // Error ya mostrado en saveOrderToDatabase
+    }
     
     const doc = new jsPDF();
     const orderData = generateBrandOrder(selectedBrand);
@@ -236,7 +297,8 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(`Fecha del pedido: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
-    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 40);
+    doc.text(`Número de pedido: ${savedOrder.orderNumber}`, 20, 40);
+    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 45);
 
     // Tabla de productos
     const tableData = orderData.items.map(item => [
@@ -246,7 +308,7 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     ]);
 
     autoTable(doc, {
-      startY: 55,
+      startY: 60,
       head: [['Producto', 'Peso', 'Cantidad']],
       body: tableData,
       styles: {
@@ -412,11 +474,11 @@ const OrderModal = ({ isOpen, onClose, items }) => {
             </button>
             <button
               onClick={orderType === 'general' ? generateGeneralOrderPDF : generateBrandOrderPDF}
-              disabled={orderType === 'brand' && !selectedBrand}
+              disabled={(orderType === 'brand' && !selectedBrand) || isSaving}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               <span className="mr-2">📦</span>
-              Generar Pedido PDF
+              {isSaving ? 'Guardando...' : 'Generar Pedido PDF'}
             </button>
           </div>
         </div>
