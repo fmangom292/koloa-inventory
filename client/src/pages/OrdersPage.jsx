@@ -412,12 +412,12 @@ const OrdersPage = ({ refreshInventory }) => {
   }
 
   return (
-    <main className="container mx-auto px-4 py-6 max-w-7xl">
+    <main className="container mx-auto px-4 py-4 sm:py-6 max-w-7xl">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">Gestión de Pedidos</h1>
-          <p className="text-gray-300 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de Pedidos</h1>
+          <p className="text-gray-300 mt-1 text-sm sm:text-base">
             Historial y seguimiento de pedidos de reposición
           </p>
         </div>
@@ -435,9 +435,9 @@ const OrdersPage = ({ refreshInventory }) => {
       )}
 
       {/* Filtros */}
-      <div className="bg-gray-800 rounded-lg p-6 mb-6">
+      <div className="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Filtros</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {[
             { key: 'all', label: 'Todos', count: Array.isArray(orders) ? orders.length : 0 },
             { key: 'pending', label: 'Pendientes', count: Array.isArray(orders) ? orders.filter(o => o.status === 'pending').length : 0 },
@@ -448,14 +448,14 @@ const OrdersPage = ({ refreshInventory }) => {
             <button
               key={filterOption.key}
               onClick={() => setFilter(filterOption.key)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center ${
+              className={`px-3 py-2 sm:px-4 rounded-lg font-medium transition-colors flex items-center text-sm sm:text-base ${
                 filter === filterOption.key
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              {filterOption.label}
-              <span className="ml-2 bg-gray-600 px-2 py-0.5 rounded-full text-xs">
+              <span className="truncate">{filterOption.label}</span>
+              <span className="ml-1 sm:ml-2 bg-gray-600 px-1.5 py-0.5 sm:px-2 rounded-full text-xs flex-shrink-0">
                 {filterOption.count}
               </span>
             </button>
@@ -480,19 +480,19 @@ const OrdersPage = ({ refreshInventory }) => {
             <table className="w-full">
               <thead className="bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Pedido
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Tipo/Marca
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Items
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Total
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Estado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -506,50 +506,50 @@ const OrdersPage = ({ refreshInventory }) => {
               <tbody className="divide-y divide-gray-700">
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-700 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-white">
                           {order.orderNumber}
                         </div>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-xs sm:text-sm text-gray-400">
                           por {order.user.name}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs sm:text-sm text-white">
                         {order.type === 'general' ? 'General' : `Marca: ${order.brand}`}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-white">
                       {order.totalItems} unidades
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-white">
                       {order.totalPrice.toFixed(2)}€
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
                         {getStatusText(order.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-300">
                       <div>{new Date(order.createdAt).toLocaleDateString('es-ES')}</div>
                       <div className="text-xs text-gray-400">
                         {new Date(order.createdAt).toLocaleTimeString('es-ES')}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex gap-2">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex gap-1 sm:gap-2">
                         <button
                           onClick={() => handleViewDetails(order)}
-                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          className="text-blue-400 hover:text-blue-300 transition-colors text-lg sm:text-base"
                           title="Ver detalles"
                         >
                           👁️
                         </button>
                         <button
                           onClick={() => handleGeneratePDF(order)}
-                          className="text-purple-400 hover:text-purple-300 transition-colors"
+                          className="text-purple-400 hover:text-purple-300 transition-colors text-lg sm:text-base"
                           title="Generar PDF"
                         >
                           📄
@@ -558,14 +558,14 @@ const OrdersPage = ({ refreshInventory }) => {
                           <>
                             <button
                               onClick={() => handleConfirmOrder(order)}
-                              className="text-green-400 hover:text-green-300 transition-colors"
+                              className="text-green-400 hover:text-green-300 transition-colors text-lg sm:text-base"
                               title="Confirmar recepción completa"
                             >
                               ✅
                             </button>
                             <button
                               onClick={() => handleCancelOrder(order)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
+                              className="text-red-400 hover:text-red-300 transition-colors text-lg sm:text-base"
                               title="Cancelar pedido"
                             >
                               ❌

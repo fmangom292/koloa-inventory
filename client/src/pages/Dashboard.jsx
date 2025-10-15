@@ -287,7 +287,7 @@ const Dashboard = () => {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setFilter('all')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                       filter === 'all' 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -297,7 +297,7 @@ const Dashboard = () => {
                   </button>
                   <button
                     onClick={() => setFilter('tabaco')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                       filter === 'tabaco' 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -307,7 +307,7 @@ const Dashboard = () => {
                   </button>
                   <button
                     onClick={() => setFilter('producto')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                       filter === 'producto' 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -317,7 +317,7 @@ const Dashboard = () => {
                   </button>
                   <button
                     onClick={handleLowStockFilter}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center ${
                       filter === 'low-stock' 
                         ? 'bg-amber-600 text-white' 
                         : 'bg-amber-900/30 text-amber-300 hover:bg-amber-900/50'
@@ -328,7 +328,7 @@ const Dashboard = () => {
                   </button>
                   <button
                     onClick={handleOutOfStockFilter}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center ${
                       filter === 'out-of-stock' 
                         ? 'bg-red-600 text-white' 
                         : 'bg-red-900/30 text-red-300 hover:bg-red-900/50'
@@ -340,7 +340,7 @@ const Dashboard = () => {
                   {(filter !== 'all' || searchTerm) && (
                     <button
                       onClick={clearAllFilters}
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-red-700 text-red-200 hover:bg-red-600 transition-colors"
+                      className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-700 text-red-200 hover:bg-red-600 transition-colors"
                     >
                       Limpiar filtros
                     </button>
@@ -348,40 +348,45 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              <div className="flex gap-2 self-start">
-                <button
-                  onClick={() => setShowReportsModal(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
-                  title="Generar informes de reposición"
-                >
-                  <span className="mr-2">📊</span>
-                  Informes
-                  {restockItems.length > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                      {restockItems.length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowOrderModal(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
-                  title="Generar pedido simplificado"
-                >
-                  <span className="mr-2">📦</span>
-                  Generar Pedido
-                  {restockItems.length > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                      {restockItems.length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={handleAddProduct}
-                  className="btn-primary flex items-center justify-center"
-                >
-                  <span className="mr-2">+</span>
-                  Agregar Producto
-                </button>
+              <div className="w-full sm:w-auto">
+                <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-2 sm:justify-end">
+                  <button
+                    onClick={() => setShowReportsModal(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center"
+                    title="Generar informes de reposición"
+                  >
+                    <span className="mr-1 sm:mr-2">📊</span>
+                    <span className="hidden sm:inline">Informes</span>
+                    <span className="sm:hidden">Info</span>
+                    {restockItems.length > 0 && (
+                      <span className="ml-1 sm:ml-2 bg-red-500 text-white text-xs rounded-full px-1 sm:px-2 py-0.5">
+                        {restockItems.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowOrderModal(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center"
+                    title="Generar pedido simplificado"
+                  >
+                    <span className="mr-1 sm:mr-2">📦</span>
+                    <span className="hidden sm:inline">Generar Pedido</span>
+                    <span className="sm:hidden">Pedido</span>
+                    {restockItems.length > 0 && (
+                      <span className="ml-1 sm:ml-2 bg-red-500 text-white text-xs rounded-full px-1 sm:px-2 py-0.5">
+                        {restockItems.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleAddProduct}
+                    className="btn-primary flex items-center justify-center px-2 sm:px-4 py-2 text-xs sm:text-sm"
+                  >
+                    <span className="mr-1 sm:mr-2">+</span>
+                    <span className="hidden sm:inline">Agregar Producto</span>
+                    <span className="sm:hidden">Agregar</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
