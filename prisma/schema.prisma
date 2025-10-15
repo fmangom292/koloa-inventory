@@ -46,7 +46,7 @@ model Order {
   orderNumber String      @unique // ej: "ORD-2025-001"
   type        String      // "general" o "brand"
   brand       String?     // null si es general, nombre de la marca si es específico
-  status      String      @default("pending") // "pending", "completed", "cancelled"
+  status      String      @default("pending") // "pending", "partial", "completed", "cancelled"
   totalItems  Int         // total de unidades pedidas
   totalPrice  Float       // precio total estimado
   createdAt   DateTime    @default(now())
@@ -60,15 +60,19 @@ model Order {
 }
 
 model OrderItem {
-  id              Int           @id @default(autoincrement())
-  orderId         Int
-  inventoryItemId Int
-  quantityOrdered Int           // cantidad pedida
-  priceAtTime     Float         // precio del producto cuando se hizo el pedido
+  id                Int           @id @default(autoincrement())
+  orderId           Int
+  inventoryItemId   Int
+  quantityOrdered   Int           // cantidad pedida
+  quantityReceived  Int           @default(0) // cantidad recibida
+  priceAtTime       Float         // precio del producto cuando se hizo el pedido
+  status            String        @default("pending") // "pending", "partial", "completed"
+  receivedAt        DateTime?     // fecha cuando se recibió (totalmente)
+  notes             String?       // notas específicas del item
   
   // Relaciones
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id])
   
   @@unique([orderId, inventoryItemId]) // Un producto por pedido
 }

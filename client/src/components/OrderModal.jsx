@@ -130,8 +130,18 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     try {
       setIsSaving(true);
       
+      // Determinar qué items usar basándose en el tipo de pedido
+      let itemsToProcess;
+      if (type === 'brand' && brand) {
+        // Para pedidos por marca, solo usar items de esa marca
+        itemsToProcess = itemsNeedingRestock.filter(item => item.marca === brand);
+      } else {
+        // Para pedidos generales, usar todos los items
+        itemsToProcess = itemsNeedingRestock;
+      }
+      
       // Preparar items del pedido (solo los que tienen cantidad > 0)
-      const orderItems = itemsNeedingRestock
+      const orderItems = itemsToProcess
         .filter(item => {
           const quantity = editableQuantities[item.id] || 0;
           return quantity > 0;

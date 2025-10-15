@@ -147,6 +147,8 @@ const OrdersPage = ({ refreshInventory }) => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'partial':
+        return 'bg-blue-100 text-blue-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
       case 'cancelled':
@@ -166,6 +168,8 @@ const OrdersPage = ({ refreshInventory }) => {
     switch (status) {
       case 'pending':
         return 'Pendiente';
+      case 'partial':
+        return 'Parcial';
       case 'completed':
         return 'Completado';
       case 'cancelled':
@@ -209,6 +213,7 @@ const OrdersPage = ({ refreshInventory }) => {
           {[
             { key: 'all', label: 'Todos', count: orders.length },
             { key: 'pending', label: 'Pendientes', count: orders.filter(o => o.status === 'pending').length },
+            { key: 'partial', label: 'Parciales', count: orders.filter(o => o.status === 'partial').length },
             { key: 'completed', label: 'Completados', count: orders.filter(o => o.status === 'completed').length },
             { key: 'cancelled', label: 'Cancelados', count: orders.filter(o => o.status === 'cancelled').length }
           ].map(filterOption => (
@@ -314,12 +319,12 @@ const OrdersPage = ({ refreshInventory }) => {
                         >
                           👁️
                         </button>
-                        {order.status === 'pending' && (
+                        {(order.status === 'pending' || order.status === 'partial') && (
                           <>
                             <button
                               onClick={() => handleConfirmOrder(order)}
                               className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Confirmar recepción"
+                              title="Confirmar recepción completa"
                             >
                               ✅
                             </button>
@@ -350,6 +355,19 @@ const OrdersPage = ({ refreshInventory }) => {
             setShowDetailModal(false);
             setSelectedOrder(null);
           }}
+          onRefresh={async () => {
+            await fetchOrders();
+            if (refreshInventory) {
+              await refreshInventory();
+            }
+            // Refrescar el pedido seleccionado
+            try {
+              const updatedOrder = await ordersAPI.getById(selectedOrder.id);
+              setSelectedOrder(updatedOrder);
+            } catch (error) {
+              console.error('Error refrescando pedido:', error);
+            }
+          }}
         />
       )}
 
@@ -378,9 +396,109 @@ const OrdersPage = ({ refreshInventory }) => {
  * @param {Object} props - Props del componente
  * @param {Object} props.order - Pedido a mostrar
  * @param {Function} props.onClose - Función para cerrar el modal
+ * @param {Function} props.onRefresh - Función para refrescar datos
  * @returns {JSX.Element} Modal con detalles del pedido
  */
-const OrderDetailModal = ({ order, onClose }) => {
+const OrderDetailModal = ({ order, onClose, onRefresh }) => {
+  const [loading, setLoading] = useState(false);
+  const [receivingItem, setReceivingItem] = useState(null);
+  const [receiveQuantity, setReceiveQuantity] = useState('');
+  const [receiveNotes, setReceiveNotes] = useState('');
+
+  /**
+   * Inicia el proceso de recepción de un item
+   * @function handleReceiveItem
+   * @param {Object} item - Item a recepcionar
+   * @returns {void} No retorna valor
+   */
+  const handleReceiveItem = (item) => {
+    setReceivingItem(item);
+    setReceiveQuantity('');
+    setReceiveNotes('');
+  };
+
+  /**
+   * Ejecuta la recepción del item
+   * @function executeReceiveItem
+   * @async
+   * @returns {Promise<void>} No retorna valor
+   */
+  const executeReceiveItem = async () => {
+    try {
+      setLoading(true);
+      const quantity = parseInt(receiveQuantity);
+      
+      if (!quantity || quantity <= 0) {
+        alert('Ingresa una cantidad válida');
+        return;
+      }
+
+      const maxQuantity = receivingItem.quantityOrdered - receivingItem.quantityReceived;
+      if (quantity > maxQuantity) {
+        alert(`No puedes recepcionar más de ${maxQuantity} unidades`);
+        return;
+      }
+
+      const result = await ordersAPI.receiveItem(order.id, receivingItem.id, {
+        quantityReceived: quantity,
+        notes: receiveNotes
+      });
+
+      alert(`Item recepcionado exitosamente. Stock actualizado: +${quantity} unidades`);
+      
+      // Cerrar modal de recepción
+      setReceivingItem(null);
+      setReceiveQuantity('');
+      setReceiveNotes('');
+      
+      // Refrescar datos
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error) {
+      alert(`Error recepcionando item: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Obtiene el color del badge según el estado del item
+   * @function getItemStatusColor
+   * @param {string} status - Estado del item
+   * @returns {string} Clases CSS para el badge
+   */
+  const getItemStatusColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'partial':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  /**
+   * Traduce el estado del item al español
+   * @function getItemStatusText
+   * @param {string} status - Estado del item en inglés
+   * @returns {string} Estado traducido al español
+   */
+  const getItemStatusText = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendiente';
+      case 'partial':
+        return 'Parcial';
+      case 'completed':
+        return 'Completado';
+      default:
+        return status;
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
@@ -464,24 +582,53 @@ const OrderDetailModal = ({ order, onClose }) => {
                     <th className="text-left py-2 text-gray-400">Producto</th>
                     <th className="text-center py-2 text-gray-400">Marca</th>
                     <th className="text-center py-2 text-gray-400">Peso</th>
-                    <th className="text-center py-2 text-gray-400">Cantidad</th>
+                    <th className="text-center py-2 text-gray-400">Pedido</th>
+                    <th className="text-center py-2 text-gray-400">Recibido</th>
+                    <th className="text-center py-2 text-gray-400">Estado</th>
                     <th className="text-right py-2 text-gray-400">Precio Unit.</th>
                     <th className="text-right py-2 text-gray-400">Subtotal</th>
+                    {(order.status === 'pending' || order.status === 'partial') && (
+                      <th className="text-center py-2 text-gray-400">Acciones</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-800">
-                      <td className="py-2 text-white">{item.inventoryItem.nombre}</td>
-                      <td className="text-center py-2 text-gray-300">{item.inventoryItem.marca}</td>
-                      <td className="text-center py-2 text-gray-300">{item.inventoryItem.peso}g</td>
-                      <td className="text-center py-2 text-yellow-400">{item.quantityOrdered}</td>
-                      <td className="text-right py-2 text-gray-300">{item.priceAtTime.toFixed(2)}€</td>
-                      <td className="text-right py-2 text-green-400">
-                        {(item.quantityOrdered * item.priceAtTime).toFixed(2)}€
-                      </td>
-                    </tr>
-                  ))}
+                  {order.items.map((item) => {
+                    const pendingQuantity = (item.quantityOrdered || 0) - (item.quantityReceived || 0);
+                    return (
+                      <tr key={item.id} className="border-b border-gray-800">
+                        <td className="py-2 text-white">{item.inventoryItem.nombre}</td>
+                        <td className="text-center py-2 text-gray-300">{item.inventoryItem.marca}</td>
+                        <td className="text-center py-2 text-gray-300">{item.inventoryItem.peso}g</td>
+                        <td className="text-center py-2 text-yellow-400">{item.quantityOrdered || 0}</td>
+                        <td className="text-center py-2 text-green-400">{item.quantityReceived || 0}</td>
+                        <td className="text-center py-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getItemStatusColor(item.status || 'pending')}`}>
+                            {getItemStatusText(item.status || 'pending')}
+                          </span>
+                        </td>
+                        <td className="text-right py-2 text-gray-300">{item.priceAtTime.toFixed(2)}€</td>
+                        <td className="text-right py-2 text-green-400">
+                          {((item.quantityOrdered || 0) * item.priceAtTime).toFixed(2)}€
+                        </td>
+                        {(order.status === 'pending' || order.status === 'partial') && (
+                          <td className="text-center py-2">
+                            {pendingQuantity > 0 ? (
+                              <button
+                                onClick={() => handleReceiveItem(item)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors text-xs"
+                                title={`Recepcionar (pendiente: ${pendingQuantity})`}
+                              >
+                                📦 Recepcionar
+                              </button>
+                            ) : (
+                              <span className="text-gray-500 text-xs">✅ Completo</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -506,6 +653,87 @@ const OrderDetailModal = ({ order, onClose }) => {
           </button>
         </div>
       </div>
+
+      {/* Modal de Recepción de Item */}
+      {receivingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-700">
+              <h3 className="text-xl font-semibold text-white">
+                Recepcionar Item
+              </h3>
+              <p className="text-gray-300 mt-1">
+                {receivingItem.inventoryItem.nombre} ({receivingItem.inventoryItem.marca})
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-gray-900 rounded-lg p-3 mb-4">
+                <div className="text-sm text-gray-400 mb-1">Información del item:</div>
+                <div className="text-white text-sm space-y-1">
+                  <div>Cantidad pedida: {receivingItem.quantityOrdered}</div>
+                  <div>Ya recibido: {receivingItem.quantityReceived || 0}</div>
+                  <div className="text-yellow-400">
+                    Pendiente: {(receivingItem.quantityOrdered || 0) - (receivingItem.quantityReceived || 0)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Cantidad a recepcionar:
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={(receivingItem.quantityOrdered || 0) - (receivingItem.quantityReceived || 0)}
+                  value={receiveQuantity}
+                  onChange={(e) => setReceiveQuantity(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Cantidad recibida"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Notas (opcional):
+                </label>
+                <textarea
+                  value={receiveNotes}
+                  onChange={(e) => setReceiveNotes(e.target.value)}
+                  placeholder="Ej: Estado del producto, fecha de caducidad..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-700">
+              <button
+                onClick={() => setReceivingItem(null)}
+                disabled={loading}
+                className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeReceiveItem}
+                disabled={loading || !receiveQuantity}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Recepcionando...
+                  </>
+                ) : (
+                  'Recepcionar'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

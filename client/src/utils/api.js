@@ -193,6 +193,20 @@ export const ordersAPI = {
   },
   
   /**
+   * Recepciona un item específico de un pedido
+   * @function receiveItem
+   * @async
+   * @param {number} orderId - ID del pedido
+   * @param {number} itemId - ID del item del pedido
+   * @param {Object} data - Datos de recepción (quantityReceived, notes)
+   * @returns {Promise<Object>} Resultado de la recepción del item
+   */
+  receiveItem: async (orderId, itemId, data) => {
+    const response = await api.put(`/orders/${orderId}/items/${itemId}/receive`, data);
+    return response.data;
+  },
+  
+  /**
    * Cancela un pedido pendiente
    * @function cancel
    * @async

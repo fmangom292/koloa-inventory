@@ -268,29 +268,53 @@ router.put("/:id/confirm", async (req, res) => {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
 
-    if (order.status !== 'pending') {
+    if (order.status !== 'pending' && order.status !== 'partial') {
       return res.status(400).json({ 
-        error: "Solo se pueden confirmar pedidos pendientes" 
+        error: "Solo se pueden confirmar pedidos pendientes o parciales" 
       });
     }
 
-    // Actualizar stock de todos los items del pedido
+    // Actualizar stock de todos los items del pedido (solo la cantidad pendiente)
     const stockUpdates = [];
     for (const orderItem of order.items) {
-      const newStock = orderItem.inventoryItem.stock + orderItem.quantityOrdered;
+      // Calcular la cantidad pendiente por recepcionar
+      const quantityPending = orderItem.quantityOrdered - (orderItem.quantityReceived || 0);
       
-      await prisma.inventoryItem.update({
-        where: { id: orderItem.inventoryItemId },
-        data: { stock: newStock }
-      });
+      if (quantityPending > 0) {
+        const newStock = orderItem.inventoryItem.stock + quantityPending;
+        
+        await prisma.inventoryItem.update({
+          where: { id: orderItem.inventoryItemId },
+          data: { stock: newStock }
+        });
 
-      stockUpdates.push({
-        itemId: orderItem.inventoryItemId,
-        itemName: orderItem.inventoryItem.nombre,
-        previousStock: orderItem.inventoryItem.stock,
-        addedQuantity: orderItem.quantityOrdered,
-        newStock: newStock
-      });
+        // Actualizar el item como completamente recibido
+        await prisma.orderItem.update({
+          where: { id: orderItem.id },
+          data: {
+            quantityReceived: orderItem.quantityOrdered,
+            status: 'completed',
+            receivedAt: new Date()
+          }
+        });
+
+        stockUpdates.push({
+          itemId: orderItem.inventoryItemId,
+          itemName: orderItem.inventoryItem.nombre,
+          previousStock: orderItem.inventoryItem.stock,
+          addedQuantity: quantityPending,
+          newStock: newStock
+        });
+      } else {
+        // El item ya estaba completamente recibido
+        stockUpdates.push({
+          itemId: orderItem.inventoryItemId,
+          itemName: orderItem.inventoryItem.nombre,
+          previousStock: orderItem.inventoryItem.stock,
+          addedQuantity: 0,
+          newStock: orderItem.inventoryItem.stock
+        });
+      }
     }
 
     // Marcar pedido como completado
@@ -322,6 +346,129 @@ router.put("/:id/confirm", async (req, res) => {
     });
   } catch (error) {
     console.error("Error confirmando pedido:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/**
+ * Recepciona parcialmente un item específico de un pedido
+ * @function receiveOrderItem
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {string} req.params.id - ID del pedido
+ * @param {string} req.params.itemId - ID del item del pedido
+ * @param {Object} req.body - Datos de recepción
+ * @param {number} req.body.quantityReceived - Cantidad recibida
+ * @param {string} [req.body.notes] - Notas del item
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Object>} Item actualizado y información del pedido
+ * @description Recepciona una cantidad específica de un item, actualiza el stock
+ * y recalcula el estado del pedido completo
+ */
+// PUT /api/orders/:id/items/:itemId/receive - Recepcionar item específico
+router.put("/:id/items/:itemId/receive", async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { quantityReceived, notes } = req.body;
+
+    if (!quantityReceived || quantityReceived <= 0) {
+      return res.status(400).json({ error: "La cantidad recibida debe ser mayor a 0" });
+    }
+
+    // Obtener el item del pedido
+    const orderItem = await prisma.orderItem.findFirst({
+      where: {
+        orderId: parseInt(id),
+        id: parseInt(itemId)
+      },
+      include: {
+        inventoryItem: true,
+        order: true
+      }
+    });
+
+    if (!orderItem) {
+      return res.status(404).json({ error: "Item del pedido no encontrado" });
+    }
+
+    if (orderItem.order.status === 'cancelled') {
+      return res.status(400).json({ error: "No se puede recepcionar items de pedidos cancelados" });
+    }
+
+    // Validar que no se reciba más de lo pedido
+    const newTotalReceived = orderItem.quantityReceived + quantityReceived;
+    if (newTotalReceived > orderItem.quantityOrdered) {
+      return res.status(400).json({ 
+        error: `No se puede recepcionar más de lo pedido. Cantidad pedida: ${orderItem.quantityOrdered}, ya recibido: ${orderItem.quantityReceived}` 
+      });
+    }
+
+    // Actualizar stock del inventario
+    const newStock = orderItem.inventoryItem.stock + quantityReceived;
+    await prisma.inventoryItem.update({
+      where: { id: orderItem.inventoryItemId },
+      data: { stock: newStock }
+    });
+
+    // Determinar el nuevo estado del item
+    let itemStatus = "pending";
+    if (newTotalReceived === orderItem.quantityOrdered) {
+      itemStatus = "completed";
+    } else if (newTotalReceived > 0) {
+      itemStatus = "partial";
+    }
+
+    // Actualizar el item del pedido
+    const updatedOrderItem = await prisma.orderItem.update({
+      where: { id: parseInt(itemId) },
+      data: {
+        quantityReceived: newTotalReceived,
+        status: itemStatus,
+        receivedAt: itemStatus === "completed" ? new Date() : orderItem.receivedAt,
+        notes: notes ? `${orderItem.notes || ''}\n${notes}`.trim() : orderItem.notes
+      },
+      include: {
+        inventoryItem: true
+      }
+    });
+
+    // Recalcular el estado del pedido completo
+    const allOrderItems = await prisma.orderItem.findMany({
+      where: { orderId: parseInt(id) }
+    });
+
+    let orderStatus = "pending";
+    const completedItems = allOrderItems.filter(item => item.status === "completed").length;
+    const partialItems = allOrderItems.filter(item => item.status === "partial").length;
+
+    if (completedItems === allOrderItems.length) {
+      orderStatus = "completed";
+    } else if (completedItems > 0 || partialItems > 0) {
+      orderStatus = "partial";
+    }
+
+    // Actualizar el estado del pedido
+    const updatedOrder = await prisma.order.update({
+      where: { id: parseInt(id) },
+      data: {
+        status: orderStatus,
+        completedAt: orderStatus === "completed" ? new Date() : null
+      }
+    });
+
+    res.json({
+      orderItem: updatedOrderItem,
+      order: updatedOrder,
+      stockUpdate: {
+        itemId: orderItem.inventoryItemId,
+        itemName: orderItem.inventoryItem.nombre,
+        previousStock: orderItem.inventoryItem.stock,
+        addedQuantity: quantityReceived,
+        newStock: newStock
+      }
+    });
+  } catch (error) {
+    console.error("Error recepcionando item:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
