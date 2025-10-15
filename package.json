@@ -1,0 +1,40 @@
+{
+  "name": "koloa-inventory",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de inventario para el pub Koloa",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "node prisma/seed.js",
+    "build:client": "cd client && npm run build",
+    "install:client": "cd client && npm install"
+  },
+  "keywords": [
+    "inventory",
+    "koloa",
+    "cachimba",
+    "express",
+    "react"
+  ],
+  "author": "Koloa Team",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.4.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "prisma": "^5.4.2"
+  }
+}

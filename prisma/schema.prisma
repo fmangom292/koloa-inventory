@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  name           String
+  code           String   // Código PIN de 4 dígitos
+  failedAttempts Int      @default(0)
+  blocked        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([code])
+}
+
+model InventoryItem {
+  id        Int      @id @default(autoincrement())
+  tipo      String   // "Tabaco" o "Producto"
+  marca     String
+  nombre    String
+  peso      Int      // Peso en gramos
+  stock     Int      // Cantidad actual en stock
+  minStock  Int      @default(0) // Stock mínimo para alertas
+  precio    Float    @default(0) // Precio del producto
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
