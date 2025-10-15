@@ -245,9 +245,9 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-700">
+        <div className="flex justify-between items-center p-6 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-semibold text-white">Informes de Reposición</h2>
           <button
             onClick={onClose}
@@ -258,7 +258,7 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="p-6 flex-1 overflow-y-auto">
           {/* Tipo de informe */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-200 mb-3">Tipo de Informe</h3>
@@ -353,7 +353,7 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
           {/* Vista previa del informe */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-200 mb-3">Vista Previa</h3>
-            <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
+            <div className="bg-gray-900 rounded-lg p-4 h-80 overflow-y-auto">
               {reportType === 'general' ? (
                 <GeneralReportPreview 
                   items={itemsNeedingRestock} 
@@ -374,7 +374,7 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
           </div>
 
           {/* Botones de acción */}
-          <div className="flex justify-end gap-4">
+          <div className="flex justify-end gap-4 pt-4 border-t border-gray-700 flex-shrink-0">
             <button
               onClick={onClose}
               className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
