@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+dotenv.config();
+const ADMIN_PIN = process.env.ADMIN_PIN;
 
 const prisma = new PrismaClient();
 
@@ -13,11 +16,11 @@ async function main() {
 
   // Crear usuario administrador
   const adminUser = await prisma.user.upsert({
-    where: { code: '6196' },
+    where: { code: ADMIN_PIN },
     update: {},
     create: {
       name: 'Administrador',
-      code: '1234',
+      code: ADMIN_PIN,
       failedAttempts: 0,
       blocked: false,
     },
