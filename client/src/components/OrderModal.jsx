@@ -174,6 +174,38 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   };
 
   /**
+   * Crea un pedido general en la base de datos sin generar PDF
+   * @function createGeneralOrder
+   * @async
+   * @returns {void} No retorna valor, cierra el modal y notifica resultado
+   * @description Crea un pedido general en la base de datos, cierra el modal y notifica al usuario
+   */
+  const createGeneralOrder = async () => {
+    const savedOrder = await saveOrderToDatabase('general');
+    if (savedOrder) {
+      alert(`✅ Pedido ${savedOrder.orderNumber} creado exitosamente. Ve a la sección de Pedidos para generar el PDF.`);
+      onClose();
+    }
+  };
+
+  /**
+   * Crea un pedido por marca en la base de datos sin generar PDF
+   * @function createBrandOrder
+   * @async
+   * @returns {void} No retorna valor, cierra el modal y notifica resultado
+   * @description Crea un pedido de marca específica en la base de datos, cierra el modal y notifica al usuario
+   */
+  const createBrandOrder = async () => {
+    if (!selectedBrand) return;
+    
+    const savedOrder = await saveOrderToDatabase('brand', selectedBrand);
+    if (savedOrder) {
+      alert(`✅ Pedido ${savedOrder.orderNumber} para la marca ${selectedBrand} creado exitosamente. Ve a la sección de Pedidos para generar el PDF.`);
+      onClose();
+    }
+  };
+
+  /**
    * Genera y descarga un PDF del pedido general con todas las marcas
    * @function generateGeneralOrderPDF
    * @returns {void} No retorna valor, descarga el archivo PDF
@@ -483,12 +515,12 @@ const OrderModal = ({ isOpen, onClose, items }) => {
               Cancelar
             </button>
             <button
-              onClick={orderType === 'general' ? generateGeneralOrderPDF : generateBrandOrderPDF}
+              onClick={orderType === 'general' ? createGeneralOrder : createBrandOrder}
               disabled={(orderType === 'brand' && !selectedBrand) || isSaving}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
-              <span className="mr-2">📦</span>
-              {isSaving ? 'Guardando...' : 'Generar Pedido PDF'}
+              <span className="mr-2">�</span>
+              {isSaving ? 'Guardando...' : 'Crear Pedido'}
             </button>
           </div>
         </div>

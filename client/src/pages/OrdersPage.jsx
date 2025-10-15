@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ordersAPI } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import jsPDF from 'jspdf';
 
 /**
  * Página principal para gestionar pedidos de reposición
@@ -135,6 +136,231 @@ const OrdersPage = ({ refreshInventory }) => {
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
     setShowDetailModal(true);
+  };
+
+  /**
+   * Genera un PDF con los detalles del pedido
+   * @function handleGeneratePDF
+   * @param {Object} order - Objeto del pedido a generar PDF
+   * @returns {void} No retorna valor
+   */
+  const handleGeneratePDF = (order) => {
+    try {
+      // Validar que el pedido tenga items
+      if (!order.items || order.items.length === 0) {
+        alert('El pedido no tiene items para generar el PDF.');
+        return;
+      }
+
+      const doc = new jsPDF();
+      const pageHeight = doc.internal.pageSize.height;
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20;
+      const lineHeight = 8;
+      const bottomMargin = 30;
+      
+      // Colores del tema
+      const colors = {
+        primary: [41, 128, 185],     // Azul
+        secondary: [52, 73, 94],     // Gris oscuro
+        accent: [230, 126, 34],      // Naranja
+        success: [46, 204, 113],     // Verde
+        text: [44, 62, 80],          // Gris muy oscuro
+        lightGray: [236, 240, 241],  // Gris claro
+        white: [255, 255, 255]
+      };
+      
+      /**
+       * Añade una nueva página si es necesario
+       * @param {number} currentY - Posición Y actual
+       * @param {number} requiredSpace - Espacio requerido
+       * @returns {number} Nueva posición Y
+       */
+      const checkAndAddPage = (currentY, requiredSpace = lineHeight) => {
+        if (currentY + requiredSpace > pageHeight - bottomMargin) {
+          doc.addPage();
+          addHeaderBackground();
+          return margin + 40; // Margen superior en nueva página después del header
+        }
+        return currentY;
+      };
+      
+      /**
+       * Añade el fondo decorativo del header
+       */
+      const addHeaderBackground = () => {
+        // Fondo azul degradado (simulado con rectángulos)
+        doc.setFillColor(...colors.primary);
+        doc.rect(0, 0, pageWidth, 35, 'F');
+        
+        // Línea decorativa
+        doc.setFillColor(...colors.accent);
+        doc.rect(0, 32, pageWidth, 3, 'F');
+        
+        // Logo/texto del pub
+        doc.setTextColor(...colors.white);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('KOLOA PUB', pageWidth / 2, 22, { align: 'center' });
+      };
+      
+      /**
+       * Añade el encabezado de la tabla con estilo
+       * @param {number} yPos - Posición Y donde añadir el encabezado
+       * @returns {number} Nueva posición Y después del encabezado
+       */
+      const addTableHeader = (yPos) => {
+        yPos = checkAndAddPage(yPos, 25);
+        
+        // Fondo del header de tabla
+        doc.setFillColor(...colors.secondary);
+        doc.rect(margin, yPos - 5, pageWidth - (margin * 2), 18, 'F');
+        
+        // Texto del header
+        doc.setTextColor(...colors.white);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PRODUCTO', margin + 3, yPos + 6);
+        doc.text('MARCA', margin + 70, yPos + 6);
+        doc.text('PESO', margin + 120, yPos + 6);
+        doc.text('CANTIDAD', margin + 150, yPos + 6);
+        
+        return yPos + 20;
+      };
+      
+      /**
+       * Añade una fila de item con estilo alternado
+       * @param {Object} item - Item del pedido
+       * @param {number} yPos - Posición Y
+       * @param {boolean} isEven - Si es fila par (para alternancia)
+       * @returns {number} Nueva posición Y
+       */
+      const addItemRow = (item, yPos, isEven) => {
+        // Fondo alternado para las filas
+        if (isEven) {
+          doc.setFillColor(...colors.lightGray);
+          doc.rect(margin, yPos - 3, pageWidth - (margin * 2), lineHeight + 2, 'F');
+        }
+        
+        // Texto de la fila
+        doc.setTextColor(...colors.text);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        
+        // Truncar nombre del producto si es muy largo
+        const productName = item.inventoryItem.nombre.length > 20 
+          ? item.inventoryItem.nombre.substring(0, 17) + '...'
+          : item.inventoryItem.nombre;
+        
+        // Truncar marca si es muy larga
+        const brandName = item.inventoryItem.marca.length > 15 
+          ? item.inventoryItem.marca.substring(0, 12) + '...'
+          : item.inventoryItem.marca;
+        
+        doc.text(productName, margin + 3, yPos + 3);
+        doc.text(brandName, margin + 70, yPos + 3);
+        doc.text(`${item.inventoryItem.peso}g`, margin + 120, yPos + 3);
+        doc.text((item.quantityOrdered || 0).toString(), margin + 155, yPos + 3, { align: 'center' });
+        
+        return yPos + lineHeight + 2;
+      };
+      
+      // === INICIO DEL DOCUMENTO ===
+      
+      // Header principal con fondo
+      addHeaderBackground();
+      
+      // Título del documento
+      doc.setTextColor(...colors.white);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PEDIDO DE REPOSICIÓN', pageWidth / 2, 32, { align: 'center' });
+      
+      // Reset color para el contenido
+      doc.setTextColor(...colors.text);
+      
+      // Posición inicial para la tabla
+      let yPosition = 60;
+      
+      // Título de la tabla
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...colors.secondary);
+      doc.text('PRODUCTOS SOLICITADOS', margin, yPosition);
+      yPosition += 15;
+      
+      // Encabezado de tabla
+      yPosition = addTableHeader(yPosition);
+      
+      // Items del pedido
+      let itemsPerPage = 0;
+      const maxItemsPerPage = 25; // Más items por página con el nuevo diseño
+      
+      order.items.forEach((item, index) => {
+        // Verificar si necesitamos una nueva página
+        yPosition = checkAndAddPage(yPosition, lineHeight + 5);
+        
+        // Si acabamos de añadir una nueva página, añadir encabezado de tabla
+        if (itemsPerPage >= maxItemsPerPage || yPosition <= margin + 50) {
+          if (yPosition <= margin + 50) {
+            yPosition = addTableHeader(yPosition);
+          }
+          itemsPerPage = 0;
+        }
+        
+        yPosition = addItemRow(item, yPosition, index % 2 === 0);
+        itemsPerPage++;
+      });
+      
+      // Espacio adicional después de la tabla
+      yPosition += 20;
+      
+      // Nota final
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(150, 150, 150);
+      doc.text('Este pedido fue generado automaticamente por el sistema de gestion de inventario.', 
+               margin, yPosition);
+      
+      // Pie de página en todas las páginas
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        
+        // Línea decorativa en el pie
+        doc.setDrawColor(...colors.primary);
+        doc.setLineWidth(1);
+        doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+        
+        // Texto del pie
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.secondary);
+        doc.text(
+          'Koloa Pub - Sistema de Gestion de Inventario', 
+          pageWidth / 2, 
+          pageHeight - 12, 
+          { align: 'center' }
+        );
+        doc.text(
+          `Página ${i} de ${totalPages}`, 
+          pageWidth - margin, 
+          pageHeight - 12, 
+          { align: 'right' }
+        );
+        doc.text(
+          new Date().toLocaleDateString('es-ES'), 
+          margin, 
+          pageHeight - 12
+        );
+      }
+      
+      // Descargar el PDF
+      doc.save(`pedido_koloa_${order.id}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alert('Error al generar el PDF. Por favor, inténtalo de nuevo.');
+    }
   };
 
   /**
@@ -318,6 +544,13 @@ const OrdersPage = ({ refreshInventory }) => {
                           title="Ver detalles"
                         >
                           👁️
+                        </button>
+                        <button
+                          onClick={() => handleGeneratePDF(order)}
+                          className="text-purple-400 hover:text-purple-300 transition-colors"
+                          title="Generar PDF"
+                        >
+                          📄
                         </button>
                         {(order.status === 'pending' || order.status === 'partial') && (
                           <>
