@@ -33,10 +33,12 @@ const OrdersPage = ({ refreshInventory }) => {
     try {
       setLoading(true);
       const data = await ordersAPI.getAll();
-      setOrders(data);
+      // Validar que data sea un array antes de establecerlo
+      setOrders(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError('Error cargando pedidos');
+      setOrders([]); // Asegurar que orders sea siempre un array
       console.error('Error fetching orders:', err);
     } finally {
       setLoading(false);
@@ -52,10 +54,10 @@ const OrdersPage = ({ refreshInventory }) => {
    * @function filteredOrders
    * @returns {Array} Lista de pedidos filtrada
    */
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = Array.isArray(orders) ? orders.filter(order => {
     if (filter === 'all') return true;
     return order.status === filter;
-  });
+  }) : [];
 
   /**
    * Confirma la recepción de un pedido
@@ -437,11 +439,11 @@ const OrdersPage = ({ refreshInventory }) => {
         <h2 className="text-lg font-semibold mb-4">Filtros</h2>
         <div className="flex gap-2">
           {[
-            { key: 'all', label: 'Todos', count: orders.length },
-            { key: 'pending', label: 'Pendientes', count: orders.filter(o => o.status === 'pending').length },
-            { key: 'partial', label: 'Parciales', count: orders.filter(o => o.status === 'partial').length },
-            { key: 'completed', label: 'Completados', count: orders.filter(o => o.status === 'completed').length },
-            { key: 'cancelled', label: 'Cancelados', count: orders.filter(o => o.status === 'cancelled').length }
+            { key: 'all', label: 'Todos', count: Array.isArray(orders) ? orders.length : 0 },
+            { key: 'pending', label: 'Pendientes', count: Array.isArray(orders) ? orders.filter(o => o.status === 'pending').length : 0 },
+            { key: 'partial', label: 'Parciales', count: Array.isArray(orders) ? orders.filter(o => o.status === 'partial').length : 0 },
+            { key: 'completed', label: 'Completados', count: Array.isArray(orders) ? orders.filter(o => o.status === 'completed').length : 0 },
+            { key: 'cancelled', label: 'Cancelados', count: Array.isArray(orders) ? orders.filter(o => o.status === 'cancelled').length : 0 }
           ].map(filterOption => (
             <button
               key={filterOption.key}
