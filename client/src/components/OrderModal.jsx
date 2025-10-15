@@ -2,6 +2,17 @@ import { useState, useEffect, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+/**
+ * Modal para generar pedidos de reposición de productos
+ * @function OrderModal
+ * @param {Object} props - Props del componente
+ * @param {boolean} props.isOpen - Indica si el modal está abierto
+ * @param {Function} props.onClose - Función para cerrar el modal
+ * @param {Array} props.items - Lista completa de productos del inventario
+ * @returns {JSX.Element|null} Modal de pedidos o null si está cerrado
+ * @description Componente que permite crear pedidos simplificados (sin precios)
+ * para enviar a proveedores, con vista previa completa y PDF final simplificado
+ */
 const OrderModal = ({ isOpen, onClose, items }) => {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [orderType, setOrderType] = useState('general'); // 'general' or 'brand'
@@ -32,6 +43,14 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     }
   }, [isOpen, itemsNeedingRestock, isInitialized]);
 
+  /**
+   * Actualiza la cantidad editable de un producto específico
+   * @function updateQuantity
+   * @param {number} itemId - ID del producto a actualizar
+   * @param {string|number} newQuantity - Nueva cantidad como string o número
+   * @returns {void} No retorna valor
+   * @description Valida y actualiza la cantidad de un producto, asegurando que sea >= 0
+   */
   // Función para actualizar cantidad de un item
   const updateQuantity = (itemId, newQuantity) => {
     const quantity = Math.max(0, parseInt(newQuantity) || 0);
@@ -46,6 +65,12 @@ const OrderModal = ({ isOpen, onClose, items }) => {
 
   if (!isOpen) return null;
 
+  /**
+   * Genera los datos del pedido general agrupados por marca
+   * @function generateGeneralOrder
+   * @returns {Array} Array de objetos con marca e items filtrados por cantidad > 0
+   * @description Agrupa productos por marca y filtra solo los que tienen cantidad solicitada
+   */
   // Generar pedido general agrupado por marca
   const generateGeneralOrder = () => {
     const groupedByBrand = itemsNeedingRestock.reduce((acc, item) => {
@@ -67,6 +92,13 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     })).filter(brandGroup => brandGroup.items.length > 0); // Solo marcas con items
   };
 
+  /**
+   * Genera los datos del pedido para una marca específica
+   * @function generateBrandOrder
+   * @param {string} brand - Nombre de la marca a procesar
+   * @returns {Object} Objeto con marca e items filtrados por cantidad > 0
+   * @description Filtra productos de una marca específica que tienen cantidad solicitada
+   */
   // Generar pedido por marca específica
   const generateBrandOrder = (brand) => {
     const brandItems = itemsNeedingRestock.filter(item => item.marca === brand);
@@ -83,6 +115,13 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     };
   };
 
+  /**
+   * Genera y descarga un PDF del pedido general con todas las marcas
+   * @function generateGeneralOrderPDF
+   * @returns {void} No retorna valor, descarga el archivo PDF
+   * @description Crea un PDF profesional con productos agrupados por marca,
+   * incluyendo solo nombre, peso y cantidad (sin precios)
+   */
   // Generar PDF del pedido general
   const generateGeneralOrderPDF = () => {
     const doc = new jsPDF();
@@ -171,6 +210,13 @@ const OrderModal = ({ isOpen, onClose, items }) => {
     doc.save(`pedido-general-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  /**
+   * Genera y descarga un PDF del pedido para una marca específica
+   * @function generateBrandOrderPDF
+   * @returns {void} No retorna valor, descarga el archivo PDF
+   * @description Crea un PDF con productos de una sola marca,
+   * formato simplificado con nombre, peso y cantidad
+   */
   // Generar PDF del pedido por marca
   const generateBrandOrderPDF = () => {
     if (!selectedBrand) return;
@@ -379,6 +425,16 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   );
 };
 
+/**
+ * Componente de vista previa para pedidos generales con todas las marcas
+ * @function GeneralOrderPreview
+ * @param {Object} props - Props del componente
+ * @param {Array} props.items - Lista de productos que necesitan reposición
+ * @param {Object} props.editableQuantities - Objeto con cantidades editables por ID
+ * @param {Function} props.updateQuantity - Función para actualizar cantidades
+ * @returns {JSX.Element} Vista previa tabulada del pedido general
+ * @description Muestra una tabla completa con stock, precios y totales para revisión interna
+ */
 // Componente para vista previa del pedido general
 const GeneralOrderPreview = ({ items, editableQuantities, updateQuantity }) => {
   const groupedByBrand = items.reduce((acc, item) => {
@@ -471,6 +527,17 @@ const GeneralOrderPreview = ({ items, editableQuantities, updateQuantity }) => {
   );
 };
 
+/**
+ * Componente de vista previa para pedidos de una marca específica
+ * @function BrandOrderPreview
+ * @param {Object} props - Props del componente
+ * @param {Array} props.items - Lista completa de productos del inventario
+ * @param {string} props.brand - Nombre de la marca seleccionada
+ * @param {Object} props.editableQuantities - Objeto con cantidades editables por ID
+ * @param {Function} props.updateQuantity - Función para actualizar cantidades
+ * @returns {JSX.Element} Vista previa tabulada del pedido por marca
+ * @description Filtra y muestra productos de una marca con información completa para revisión
+ */
 // Componente para vista previa del pedido por marca
 const BrandOrderPreview = ({ items, brand, editableQuantities, updateQuantity }) => {
   const brandItems = items.filter(item => item.marca === brand);

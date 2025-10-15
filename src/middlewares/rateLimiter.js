@@ -5,6 +5,20 @@ const prisma = new PrismaClient();
 // Almacenar intentos por IP (en producción usar Redis o base de datos)
 const attemptsByIP = new Map();
 
+/**
+ * Middleware que limita los intentos de login para prevenir ataques de fuerza bruta
+ * @function rateLimiter
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} req.body - Cuerpo de la petición
+ * @param {string} req.body.code - Código PIN que se está intentando
+ * @param {string} req.ip - Dirección IP del cliente
+ * @param {Object} res - Objeto response de Express
+ * @param {Function} next - Función para continuar al siguiente middleware
+ * @returns {Promise<void|Object>} Continúa al siguiente middleware o retorna error 429/423
+ * @description Controla los intentos fallidos por IP y por usuario,
+ * bloqueando después de múltiples intentos incorrectos para prevenir ataques
+ */
 const rateLimiter = async (req, res, next) => {
   try {
     const { code } = req.body;

@@ -5,6 +5,15 @@ const ADMIN_PIN = process.env.ADMIN_PIN;
 
 const prisma = new PrismaClient();
 
+/**
+ * Función principal que inicializa la base de datos con datos de prueba
+ * @function main
+ * @async
+ * @returns {Promise<void>} No retorna valor
+ * @description Limpia la base de datos, crea el usuario administrador
+ * y puebla el inventario con 164 productos reales de tabacos de cachimba
+ * del pub Koloa, incluyendo marcas como MUSTHAVE, BLACKBURN, DOZAJ, etc.
+ */
 async function main() {
   console.log('🌱 Iniciando seed de la base de datos...');
 

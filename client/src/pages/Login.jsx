@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+/**
+ * Componente de página de login con código PIN
+ * @function Login
+ * @returns {JSX.Element} Página de login o redirección al dashboard
+ * @description Componente que renderiza un formulario de autenticación por PIN,
+ * maneja la validación del código de 4 dígitos y redirige al dashboard tras login exitoso
+ */
 const Login = () => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,6 +20,15 @@ const Login = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  /**
+   * Maneja el envío del formulario de login
+   * @function handleSubmit
+   * @async
+   * @param {Event} e - Evento del formulario
+   * @returns {Promise<void>} No retorna valor
+   * @description Valida que el código tenga 4 dígitos, envía la petición de login
+   * y maneja el resultado mostrando errores o completando la autenticación
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     

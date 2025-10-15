@@ -8,6 +8,15 @@ const prisma = new PrismaClient();
 // Aplicar middleware de autenticación a todas las rutas
 router.use(authMiddleware);
 
+/**
+ * Obtiene todos los productos del inventario
+ * @function getInventoryItems
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Array>} Lista de todos los productos ordenados por fecha de creación
+ * @description Consulta la base de datos y retorna todos los items del inventario
+ */
 // GET /api/inventory - Obtener todos los productos
 router.get("/", async (req, res) => {
   try {
@@ -22,6 +31,23 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * Crea un nuevo producto en el inventario
+ * @function createInventoryItem
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} req.body - Cuerpo de la petición
+ * @param {string} req.body.tipo - Tipo del producto (ej: "Tabaco")
+ * @param {string} req.body.marca - Marca del producto
+ * @param {string} req.body.nombre - Nombre del producto
+ * @param {number} req.body.peso - Peso del producto en gramos
+ * @param {number} req.body.stock - Cantidad actual en stock
+ * @param {number} req.body.minStock - Stock mínimo requerido
+ * @param {number} req.body.precio - Precio del producto
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Object>} El nuevo producto creado con su ID asignado
+ * @description Valida los campos obligatorios y crea un nuevo item en la base de datos
+ */
 // POST /api/inventory - Crear nuevo producto
 router.post("/", async (req, res) => {
   try {
@@ -53,6 +79,25 @@ router.post("/", async (req, res) => {
   }
 });
 
+/**
+ * Actualiza un producto existente del inventario
+ * @function updateInventoryItem
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} req.params - Parámetros de la URL
+ * @param {string} req.params.id - ID del producto a actualizar
+ * @param {Object} req.body - Nuevos datos del producto
+ * @param {string} req.body.tipo - Tipo del producto
+ * @param {string} req.body.marca - Marca del producto
+ * @param {string} req.body.nombre - Nombre del producto
+ * @param {number} req.body.peso - Peso del producto en gramos
+ * @param {number} req.body.stock - Cantidad actual en stock
+ * @param {number} req.body.minStock - Stock mínimo requerido
+ * @param {number} req.body.precio - Precio del producto
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Object>} El producto actualizado o error si no existe
+ * @description Busca el producto por ID y actualiza todos sus campos
+ */
 // PUT /api/inventory/:id - Actualizar producto
 router.put("/:id", async (req, res) => {
   try {
@@ -82,6 +127,17 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+/**
+ * Elimina un producto del inventario
+ * @function deleteInventoryItem
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} req.params - Parámetros de la URL
+ * @param {string} req.params.id - ID del producto a eliminar
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Object>} Confirmación de eliminación o error si no existe
+ * @description Busca el producto por ID y lo elimina permanentemente de la base de datos
+ */
 // DELETE /api/inventory/:id - Eliminar producto
 router.delete("/:id", async (req, res) => {
   try {

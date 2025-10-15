@@ -3,6 +3,18 @@ import { authAPI } from '../utils/api';
 
 const AuthContext = createContext();
 
+/**
+ * Hook para acceder al contexto de autenticación
+ * @function useAuth
+ * @returns {Object} Objeto con datos y métodos de autenticación
+ * @returns {Object|null} returns.user - Datos del usuario autenticado o null
+ * @returns {Function} returns.login - Función para iniciar sesión
+ * @returns {Function} returns.logout - Función para cerrar sesión
+ * @returns {boolean} returns.loading - Estado de carga inicial
+ * @returns {boolean} returns.isAuthenticated - True si el usuario está autenticado
+ * @throws {Error} Error si se usa fuera del AuthProvider
+ * @description Hook que proporciona acceso al estado y métodos de autenticación
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -11,6 +23,15 @@ export const useAuth = () => {
   return context;
 };
 
+/**
+ * Proveedor del contexto de autenticación para la aplicación
+ * @function AuthProvider
+ * @param {Object} props - Props del componente
+ * @param {React.ReactNode} props.children - Componentes hijos que tendrán acceso al contexto
+ * @returns {JSX.Element} Proveedor del contexto de autenticación
+ * @description Componente que maneja el estado global de autenticación,
+ * persiste la sesión en localStorage y proporciona métodos de login/logout
+ */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +54,17 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  /**
+   * Inicia sesión con un código PIN de 4 dígitos
+   * @function login
+   * @async
+   * @param {string} code - Código PIN de 4 dígitos del usuario
+   * @returns {Promise<Object>} Resultado del login
+   * @returns {boolean} returns.success - True si el login fue exitoso
+   * @returns {string} [returns.error] - Mensaje de error si el login falló
+   * @description Envía el código PIN al servidor, guarda el token y datos del usuario
+   * en localStorage si es exitoso, y actualiza el estado de autenticación
+   */
   const login = async (code) => {
     try {
       const response = await authAPI.login(code);
@@ -55,6 +87,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Cierra la sesión del usuario actual
+   * @function logout
+   * @async
+   * @returns {Promise<void>} No retorna valor
+   * @description Notifica al servidor del logout, limpia el estado de usuario
+   * y elimina token y datos del usuario del localStorage
+   */
   const logout = async () => {
     try {
       await authAPI.logout();
