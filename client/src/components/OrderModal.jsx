@@ -16,7 +16,7 @@ import { ordersAPI } from '../utils/api';
  */
 const OrderModal = ({ isOpen, onClose, items }) => {
   const [selectedBrand, setSelectedBrand] = useState('');
-  const [orderType, setOrderType] = useState('general'); // 'general' or 'brand'
+  const [orderType, setOrderType] = useState('general'); // 'general', 'brand', or 'zeroStock'
   const [editableQuantities, setEditableQuantities] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
