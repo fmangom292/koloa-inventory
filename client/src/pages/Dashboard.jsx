@@ -28,7 +28,7 @@ const Dashboard = () => {
     if (filter === 'all') {
       typeMatch = true;
     } else if (filter === 'low-stock') {
-      typeMatch = item.stock < item.minStock;
+      typeMatch = item.stock < item.minStock && item.stock > 0;
     } else if (filter === 'out-of-stock') {
       typeMatch = item.stock === 0;
     } else {
@@ -43,7 +43,7 @@ const Dashboard = () => {
     return typeMatch && searchMatch;
   });
 
-  const lowStockItems = items.filter(item => item.stock < item.minStock);
+  const lowStockItems = items.filter(item => item.stock < item.minStock && item.stock > 0);
   const outOfStockItems = items.filter(item => item.stock === 0);
   const restockItems = items.filter(item => item.stock < item.minStock);
 

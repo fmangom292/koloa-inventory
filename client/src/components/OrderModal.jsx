@@ -23,7 +23,7 @@ const OrderModal = ({ isOpen, onClose, items }) => {
 
   // Usar useMemo para evitar recálculos innecesarios
   const itemsNeedingRestock = useMemo(() => {
-    return items.filter(item => item.stock < item.minStock);
+    return items.filter(item => item.stock < item.minStock && item.stock > 0);
   }, [items]);
   
   // Obtener marcas únicas de items que necesitan reposición
