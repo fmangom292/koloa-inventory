@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import InventoryList from '../components/InventoryList';
 import ProductModal from '../components/ProductModal';
 import ReportsModal from '../components/ReportsModal';
+import OrderModal from '../components/OrderModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useEffect, useRef } from 'react';
 
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const { items, loading, error, createItem, updateItem, deleteItem, clearError } = useInventory();
   const [showModal, setShowModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [filter, setFilter] = useState('all'); // all, tabaco, producto, low-stock, out-of-stock
   const [searchTerm, setSearchTerm] = useState('');
@@ -327,6 +329,19 @@ const Dashboard = () => {
                   )}
                 </button>
                 <button
+                  onClick={() => setShowOrderModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+                  title="Generar pedido simplificado"
+                >
+                  <span className="mr-2">📦</span>
+                  Generar Pedido
+                  {restockItems.length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                      {restockItems.length}
+                    </span>
+                  )}
+                </button>
+                <button
                   onClick={handleAddProduct}
                   className="btn-primary flex items-center justify-center"
                 >
@@ -424,6 +439,13 @@ const Dashboard = () => {
         <ReportsModal
           isOpen={showReportsModal}
           onClose={() => setShowReportsModal(false)}
+          items={items}
+        />
+
+        {/* Order Modal */}
+        <OrderModal
+          isOpen={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
           items={items}
         />
       </main>

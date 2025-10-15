@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const ReportsModal = ({ isOpen, onClose, items }) => {
+const OrderModal = ({ isOpen, onClose, items }) => {
   const [selectedBrand, setSelectedBrand] = useState('');
-  const [reportType, setReportType] = useState('general'); // 'general' or 'brand'
+  const [orderType, setOrderType] = useState('general'); // 'general' or 'brand'
   const [editableQuantities, setEditableQuantities] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -40,15 +40,14 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
         ...prev,
         [itemId]: quantity
       };
-      console.log('Actualizando cantidad:', { itemId, quantity, updated }); // Debug
       return updated;
     });
   };
 
   if (!isOpen) return null;
 
-  // Generar informe general agrupado por marca
-  const generateGeneralReport = () => {
+  // Generar pedido general agrupado por marca
+  const generateGeneralOrder = () => {
     const groupedByBrand = itemsNeedingRestock.reduce((acc, item) => {
       if (!acc[item.marca]) {
         acc[item.marca] = [];
@@ -62,43 +61,32 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
       items: groupedByBrand[brand]
         .map(item => ({
           ...item,
-          unitsNeeded: editableQuantities[item.id] || 0,
-          totalPrice: item.precio * (editableQuantities[item.id] || 0)
+          unitsNeeded: editableQuantities[item.id] || 0
         }))
-        .filter(item => item.unitsNeeded > 0), // Solo incluir items con cantidad > 0
-      totalBrand: groupedByBrand[brand].reduce((sum, item) => {
-        const unitsNeeded = editableQuantities[item.id] || 0;
-        return sum + (item.precio * unitsNeeded);
-      }, 0)
+        .filter(item => item.unitsNeeded > 0) // Solo incluir items con cantidad > 0
     })).filter(brandGroup => brandGroup.items.length > 0); // Solo marcas con items
   };
 
-  // Generar informe por marca específica
-  const generateBrandReport = (brand) => {
+  // Generar pedido por marca específica
+  const generateBrandOrder = (brand) => {
     const brandItems = itemsNeedingRestock.filter(item => item.marca === brand);
     const filteredItems = brandItems
       .map(item => ({
         ...item,
-        unitsNeeded: editableQuantities[item.id] || 0,
-        totalPrice: item.precio * (editableQuantities[item.id] || 0)
+        unitsNeeded: editableQuantities[item.id] || 0
       }))
       .filter(item => item.unitsNeeded > 0); // Solo incluir items con cantidad > 0
     
     return {
       brand,
-      items: filteredItems,
-      total: brandItems.reduce((sum, item) => {
-        const unitsNeeded = editableQuantities[item.id] || 0;
-        return sum + (item.precio * unitsNeeded);
-      }, 0)
+      items: filteredItems
     };
   };
 
-  // Generar PDF del informe general
-  const generateGeneralPDF = () => {
+  // Generar PDF del pedido general
+  const generateGeneralOrderPDF = () => {
     const doc = new jsPDF();
-    const reportData = generateGeneralReport();
-    const grandTotal = reportData.reduce((sum, brandGroup) => sum + brandGroup.totalBrand, 0);
+    const orderData = generateGeneralOrder();
 
     // Configurar fuente
     doc.setFont('helvetica');
@@ -106,17 +94,18 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
     // Título principal
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
-    doc.text('INFORME DE REPOSICIÓN GENERAL', 20, 25);
+    doc.text('PEDIDO GENERAL DE TABACOS', 20, 25);
     
     // Información del documento
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
-    doc.text(`Koloa Inventory System`, 20, 40);
+    doc.text(`Fecha del pedido: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 40);
 
     let yPosition = 55;
+    let totalItems = 0;
 
-    reportData.forEach((brandGroup, brandIndex) => {
+    orderData.forEach((brandGroup, brandIndex) => {
       // Verificar si necesitamos nueva página
       if (yPosition > 250) {
         doc.addPage();
@@ -130,23 +119,22 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
       yPosition += 10;
 
       // Tabla de productos de la marca
-      const tableData = brandGroup.items.map(item => [
-        item.nombre,
-        `${item.stock}`,
-        `${item.minStock}`,
-        `${item.unitsNeeded}`,
-        `${item.peso}g`,
-        `${item.precio.toFixed(2)}€`,
-        `${item.totalPrice.toFixed(2)}€`
-      ]);
+      const tableData = brandGroup.items.map(item => {
+        totalItems += item.unitsNeeded;
+        return [
+          item.nombre,
+          `${item.peso}g`,
+          `${item.unitsNeeded}`
+        ];
+      });
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Producto', 'Stock Actual', 'Stock Mínimo', 'Unidades Necesarias', 'Peso', 'Precio Unit.', 'Precio Total']],
+        head: [['Producto', 'Peso', 'Cantidad']],
         body: tableData,
         styles: {
-          fontSize: 9,
-          cellPadding: 3,
+          fontSize: 10,
+          cellPadding: 4,
         },
         headStyles: {
           fillColor: [66, 139, 202],
@@ -161,10 +149,11 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
 
       yPosition = doc.lastAutoTable.finalY + 5;
 
-      // Total de la marca
+      // Total de unidades de la marca
+      const brandTotalUnits = brandGroup.items.reduce((sum, item) => sum + item.unitsNeeded, 0);
       doc.setFontSize(11);
       doc.setTextColor(40, 40, 40);
-      doc.text(`Total ${brandGroup.brand}: ${brandGroup.totalBrand.toFixed(2)}€`, 20, yPosition);
+      doc.text(`Total unidades ${brandGroup.brand}: ${brandTotalUnits}`, 20, yPosition);
       yPosition += 15;
     });
 
@@ -176,18 +165,18 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
     
     doc.setFontSize(16);
     doc.setTextColor(220, 53, 69);
-    doc.text(`TOTAL GENERAL DEL PEDIDO: ${grandTotal.toFixed(2)}€`, 20, yPosition + 10);
+    doc.text(`TOTAL GENERAL DE UNIDADES: ${totalItems}`, 20, yPosition + 10);
 
     // Guardar PDF
-    doc.save(`informe-reposicion-general-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`pedido-general-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  // Generar PDF del informe por marca
-  const generateBrandPDF = () => {
+  // Generar PDF del pedido por marca
+  const generateBrandOrderPDF = () => {
     if (!selectedBrand) return;
     
     const doc = new jsPDF();
-    const reportData = generateBrandReport(selectedBrand);
+    const orderData = generateBrandOrder(selectedBrand);
 
     // Configurar fuente
     doc.setFont('helvetica');
@@ -195,32 +184,28 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
     // Título principal
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
-    doc.text(`INFORME DE REPOSICIÓN - ${selectedBrand}`, 20, 25);
+    doc.text(`PEDIDO - ${selectedBrand}`, 20, 25);
     
     // Información del documento
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
-    doc.text(`Koloa Inventory System`, 20, 40);
+    doc.text(`Fecha del pedido: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+    doc.text(`Koloa Pub - Sistema de Inventario`, 20, 40);
 
     // Tabla de productos
-    const tableData = reportData.items.map(item => [
+    const tableData = orderData.items.map(item => [
       item.nombre,
-      `${item.stock}`,
-      `${item.minStock}`,
-      `${item.unitsNeeded}`,
       `${item.peso}g`,
-      `${item.precio.toFixed(2)}€`,
-      `${item.totalPrice.toFixed(2)}€`
+      `${item.unitsNeeded}`
     ]);
 
     autoTable(doc, {
       startY: 55,
-      head: [['Producto', 'Stock Actual', 'Stock Mínimo', 'Unidades Necesarias', 'Peso', 'Precio Unit.', 'Precio Total']],
+      head: [['Producto', 'Peso', 'Cantidad']],
       body: tableData,
       styles: {
-        fontSize: 10,
-        cellPadding: 4,
+        fontSize: 12,
+        cellPadding: 5,
       },
       headStyles: {
         fillColor: [66, 139, 202],
@@ -234,13 +219,14 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
     });
 
     // Total
+    const totalUnits = orderData.items.reduce((sum, item) => sum + item.unitsNeeded, 0);
     const finalY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(16);
     doc.setTextColor(220, 53, 69);
-    doc.text(`TOTAL ${selectedBrand}: ${reportData.total.toFixed(2)}€`, 20, finalY);
+    doc.text(`TOTAL UNIDADES ${selectedBrand}: ${totalUnits}`, 20, finalY);
 
     // Guardar PDF
-    doc.save(`informe-reposicion-${selectedBrand.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`pedido-${selectedBrand.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -248,7 +234,7 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
-          <h2 className="text-xl font-semibold text-white">Informes de Reposición</h2>
+          <h2 className="text-xl font-semibold text-white">Generar Pedido</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -259,41 +245,41 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Tipo de informe */}
+          {/* Tipo de pedido */}
           <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-200 mb-3">Tipo de Informe</h3>
+            <h3 className="text-lg font-medium text-gray-200 mb-3">Tipo de Pedido</h3>
             <div className="flex gap-4">
               <button
-                onClick={() => setReportType('general')}
+                onClick={() => setOrderType('general')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  reportType === 'general'
-                    ? 'bg-blue-600 text-white'
+                  orderType === 'general'
+                    ? 'bg-green-600 text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                Informe General (Todas las marcas)
+                Pedido General (Todas las marcas)
               </button>
               <button
-                onClick={() => setReportType('brand')}
+                onClick={() => setOrderType('brand')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  reportType === 'brand'
-                    ? 'bg-blue-600 text-white'
+                  orderType === 'brand'
+                    ? 'bg-green-600 text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                Informe por Marca
+                Pedido por Marca
               </button>
             </div>
           </div>
 
-          {/* Selección de marca (solo si es informe por marca) */}
-          {reportType === 'brand' && (
+          {/* Selección de marca (solo si es pedido por marca) */}
+          {orderType === 'brand' && (
             <div className="mb-6">
               <h3 className="text-lg font-medium text-gray-200 mb-3">Seleccionar Marca</h3>
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">Selecciona una marca...</option>
                 {brandsNeedingRestock.map(brand => (
@@ -314,7 +300,6 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
                     newQuantities[item.id] = Math.max(0, item.minStock - item.stock);
                   });
                   setEditableQuantities(newQuantities);
-                  console.log('Restaurando cantidades sugeridas:', newQuantities); // Debug
                 }}
                 className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
               >
@@ -327,7 +312,6 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
                     newQuantities[item.id] = 0;
                   });
                   setEditableQuantities(newQuantities);
-                  console.log('Limpiando todo:', newQuantities); // Debug
                 }}
                 className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
               >
@@ -341,7 +325,6 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
                     newQuantities[item.id] = Math.ceil(suggested * 1.5); // 50% extra
                   });
                   setEditableQuantities(newQuantities);
-                  console.log('Pidiendo 50% extra:', newQuantities); // Debug
                 }}
                 className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
               >
@@ -350,18 +333,18 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
             </div>
           </div>
 
-          {/* Vista previa del informe */}
+          {/* Vista previa del pedido */}
           <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-200 mb-3">Vista Previa</h3>
+            <h3 className="text-lg font-medium text-gray-200 mb-3">Vista Previa del Pedido</h3>
             <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
-              {reportType === 'general' ? (
-                <GeneralReportPreview 
+              {orderType === 'general' ? (
+                <GeneralOrderPreview 
                   items={itemsNeedingRestock} 
                   editableQuantities={editableQuantities}
                   updateQuantity={updateQuantity}
                 />
               ) : selectedBrand ? (
-                <BrandReportPreview 
+                <BrandOrderPreview 
                   items={itemsNeedingRestock} 
                   brand={selectedBrand}
                   editableQuantities={editableQuantities}
@@ -382,12 +365,12 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
               Cancelar
             </button>
             <button
-              onClick={reportType === 'general' ? generateGeneralPDF : generateBrandPDF}
-              disabled={reportType === 'brand' && !selectedBrand}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              onClick={orderType === 'general' ? generateGeneralOrderPDF : generateBrandOrderPDF}
+              disabled={orderType === 'brand' && !selectedBrand}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
-              <span className="mr-2">📄</span>
-              Generar PDF
+              <span className="mr-2">📦</span>
+              Generar Pedido PDF
             </button>
           </div>
         </div>
@@ -396,8 +379,8 @@ const ReportsModal = ({ isOpen, onClose, items }) => {
   );
 };
 
-// Componente para vista previa del informe general
-const GeneralReportPreview = ({ items, editableQuantities, updateQuantity }) => {
+// Componente para vista previa del pedido general
+const GeneralOrderPreview = ({ items, editableQuantities, updateQuantity }) => {
   const groupedByBrand = items.reduce((acc, item) => {
     if (!acc[item.marca]) {
       acc[item.marca] = [];
@@ -406,24 +389,33 @@ const GeneralReportPreview = ({ items, editableQuantities, updateQuantity }) => 
     return acc;
   }, {});
 
-  const grandTotal = items.reduce((sum, item) => {
+  const grandTotalUnits = items.reduce((sum, item) => {
+    const unitsNeeded = editableQuantities[item.id] || 0;
+    return sum + unitsNeeded;
+  }, 0);
+
+  const grandTotalPrice = items.reduce((sum, item) => {
     const unitsNeeded = editableQuantities[item.id] || 0;
     return sum + (item.precio * unitsNeeded);
   }, 0);
 
   return (
     <div className="text-sm">
-      <h4 className="text-white font-semibold mb-4">Informe General de Reposición</h4>
+      <h4 className="text-white font-semibold mb-4">Vista Previa del Pedido General</h4>
       {Object.keys(groupedByBrand).map(brand => {
         const brandItems = groupedByBrand[brand];
-        const brandTotal = brandItems.reduce((sum, item) => {
+        const brandTotalUnits = brandItems.reduce((sum, item) => {
+          const unitsNeeded = editableQuantities[item.id] || 0;
+          return sum + unitsNeeded;
+        }, 0);
+        const brandTotalPrice = brandItems.reduce((sum, item) => {
           const unitsNeeded = editableQuantities[item.id] || 0;
           return sum + (item.precio * unitsNeeded);
         }, 0);
         
         return (
           <div key={brand} className="mb-6">
-            <h5 className="text-blue-400 font-medium mb-2">MARCA: {brand}</h5>
+            <h5 className="text-green-400 font-medium mb-2">MARCA: {brand}</h5>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -431,7 +423,7 @@ const GeneralReportPreview = ({ items, editableQuantities, updateQuantity }) => 
                     <th className="text-left py-1 text-gray-400">Producto</th>
                     <th className="text-center py-1 text-gray-400">Stock</th>
                     <th className="text-center py-1 text-gray-400">Min</th>
-                    <th className="text-center py-1 text-gray-400">Necesarias</th>
+                    <th className="text-center py-1 text-gray-400">Cantidad</th>
                     <th className="text-center py-1 text-gray-400">Peso</th>
                     <th className="text-center py-1 text-gray-400">P. Unit.</th>
                     <th className="text-right py-1 text-gray-400">P. Total</th>
@@ -452,42 +444,48 @@ const GeneralReportPreview = ({ items, editableQuantities, updateQuantity }) => 
                             min="0"
                             value={unitsNeeded}
                             onChange={(e) => updateQuantity(item.id, e.target.value)}
-                            className="w-16 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-yellow-400 text-center text-xs focus:outline-none focus:border-blue-500"
+                            className="w-16 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-yellow-400 text-center text-xs focus:outline-none focus:border-green-500"
                           />
                         </td>
                         <td className="text-center py-1 text-gray-300">{item.peso}g</td>
                         <td className="text-center py-1 text-gray-300">{item.precio.toFixed(2)}€</td>
-                        <td className="text-right py-1 text-green-400">{totalPrice.toFixed(2)}€</td>
+                        <td className="text-right py-1 text-blue-400">{totalPrice.toFixed(2)}€</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-            <div className="text-right mt-2">
-              <span className="text-yellow-400 font-medium">Total {brand}: {brandTotal.toFixed(2)}€</span>
+            <div className="text-right mt-2 space-y-1">
+              <div><span className="text-yellow-400 font-medium">Total unidades {brand}: {brandTotalUnits}</span></div>
+              <div><span className="text-blue-400 font-medium">Total precio {brand}: {brandTotalPrice.toFixed(2)}€</span></div>
             </div>
           </div>
         );
       })}
-      <div className="border-t border-gray-700 pt-4 text-right">
-        <span className="text-red-400 font-bold text-lg">TOTAL GENERAL: {grandTotal.toFixed(2)}€</span>
+      <div className="border-t border-gray-700 pt-4 text-right space-y-2">
+        <div><span className="text-green-400 font-bold text-lg">TOTAL GENERAL UNIDADES: {grandTotalUnits}</span></div>
+        <div><span className="text-blue-400 font-bold text-lg">TOTAL GENERAL PRECIO: {grandTotalPrice.toFixed(2)}€</span></div>
       </div>
     </div>
   );
 };
 
-// Componente para vista previa del informe por marca
-const BrandReportPreview = ({ items, brand, editableQuantities, updateQuantity }) => {
+// Componente para vista previa del pedido por marca
+const BrandOrderPreview = ({ items, brand, editableQuantities, updateQuantity }) => {
   const brandItems = items.filter(item => item.marca === brand);
-  const total = brandItems.reduce((sum, item) => {
+  const totalUnits = brandItems.reduce((sum, item) => {
+    const unitsNeeded = editableQuantities[item.id] || 0;
+    return sum + unitsNeeded;
+  }, 0);
+  const totalPrice = brandItems.reduce((sum, item) => {
     const unitsNeeded = editableQuantities[item.id] || 0;
     return sum + (item.precio * unitsNeeded);
   }, 0);
 
   return (
     <div className="text-sm">
-      <h4 className="text-white font-semibold mb-4">Informe de Reposición - {brand}</h4>
+      <h4 className="text-white font-semibold mb-4">Vista Previa del Pedido - {brand}</h4>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -495,7 +493,7 @@ const BrandReportPreview = ({ items, brand, editableQuantities, updateQuantity }
               <th className="text-left py-2 text-gray-400">Producto</th>
               <th className="text-center py-2 text-gray-400">Stock Actual</th>
               <th className="text-center py-2 text-gray-400">Stock Mínimo</th>
-              <th className="text-center py-2 text-gray-400">Unidades Necesarias</th>
+              <th className="text-center py-2 text-gray-400">Cantidad</th>
               <th className="text-center py-2 text-gray-400">Peso</th>
               <th className="text-center py-2 text-gray-400">Precio Unit.</th>
               <th className="text-right py-2 text-gray-400">Precio Total</th>
@@ -516,23 +514,24 @@ const BrandReportPreview = ({ items, brand, editableQuantities, updateQuantity }
                       min="0"
                       value={unitsNeeded}
                       onChange={(e) => updateQuantity(item.id, e.target.value)}
-                      className="w-16 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-yellow-400 text-center text-xs focus:outline-none focus:border-blue-500"
+                      className="w-16 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-yellow-400 text-center text-xs focus:outline-none focus:border-green-500"
                     />
                   </td>
                   <td className="text-center py-2 text-gray-300">{item.peso}g</td>
                   <td className="text-center py-2 text-gray-300">{item.precio.toFixed(2)}€</td>
-                  <td className="text-right py-2 text-green-400">{totalPrice.toFixed(2)}€</td>
+                  <td className="text-right py-2 text-blue-400">{totalPrice.toFixed(2)}€</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <div className="border-t border-gray-700 pt-4 text-right">
-        <span className="text-red-400 font-bold text-lg">TOTAL {brand}: {total.toFixed(2)}€</span>
+      <div className="border-t border-gray-700 pt-4 text-right space-y-2">
+        <div><span className="text-green-400 font-bold text-lg">TOTAL UNIDADES {brand}: {totalUnits}</span></div>
+        <div><span className="text-blue-400 font-bold text-lg">TOTAL PRECIO {brand}: {totalPrice.toFixed(2)}€</span></div>
       </div>
     </div>
   );
 };
 
-export default ReportsModal;
+export default OrderModal;
