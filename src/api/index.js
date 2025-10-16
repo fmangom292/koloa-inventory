@@ -2,6 +2,7 @@ import express from "express";
 import authRoutes from "./auth.js";
 import inventoryRoutes from "./inventory.js";
 import ordersRoutes from "./orders.js";
+import usersRoutes from "./usersRoutes.js";
 
 const router = express.Router();
 
@@ -13,5 +14,8 @@ router.use("/inventory", inventoryRoutes);
 
 // Rutas de pedidos
 router.use("/orders", ordersRoutes);
+
+// Rutas de usuarios (solo para administradores)
+router.use("/users", usersRoutes);
 
 export default router;

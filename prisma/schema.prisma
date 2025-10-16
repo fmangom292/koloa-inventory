@@ -14,6 +14,7 @@ model User {
   id             Int      @id @default(autoincrement())
   name           String
   code           String   // Código PIN de 4 dígitos
+  role           String   @default("user") // "admin" o "user"
   failedAttempts Int      @default(0)
   blocked        Boolean  @default(false)
   createdAt      DateTime @default(now())

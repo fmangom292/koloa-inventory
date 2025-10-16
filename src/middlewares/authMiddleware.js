@@ -25,10 +25,17 @@ const authMiddleware = (req, res, next) => {
     const token = authHeader.substring(7); // Remover "Bearer "
 
     const decoded = verifyToken(token);
+    
+    // Asegurar que el token tenga un rol por defecto si no lo tiene (compatibilidad con tokens antiguos)
+    if (!decoded.role) {
+      decoded.role = 'user';
+    }
+    
     req.user = decoded;
     
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error.message);
     return res.status(401).json({ 
       error: "Token inválido o expirado" 
     });
