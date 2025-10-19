@@ -1,6 +1,6 @@
 import HighlightText from './HighlightText';
 
-const InventoryList = ({ items, loading, onEdit, onDelete, searchTerm = '' }) => {
+const InventoryList = ({ items, loading, onEdit, onDelete, onAddToCart, searchTerm = '' }) => {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -45,13 +45,14 @@ const InventoryList = ({ items, loading, onEdit, onDelete, searchTerm = '' }) =>
           searchTerm={searchTerm}
           onEdit={onEdit}
           onDelete={onDelete}
+          onAddToCart={onAddToCart}
         />
       ))}
     </div>
   );
 };
 
-const InventoryCard = ({ item, searchTerm, onEdit, onDelete }) => {
+const InventoryCard = ({ item, searchTerm, onEdit, onDelete, onAddToCart }) => {
   const isLowStock = item.stock < item.minStock;
   const stockPercentage = item.minStock > 0 ? (item.stock / item.minStock) * 100 : 100;
 
@@ -129,6 +130,13 @@ const InventoryCard = ({ item, searchTerm, onEdit, onDelete }) => {
 
         {/* Actions */}
         <div className="flex space-x-2">
+          <button
+            onClick={() => onAddToCart(item)}
+            className="bg-green-900/50 hover:bg-green-900/70 text-green-300 py-2 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center"
+            title="Añadir a pedido"
+          >
+            +
+          </button>
           <button
             onClick={() => onEdit(item)}
             className="flex-1 bg-dark-700 hover:bg-dark-600 text-gray-200 py-2 px-3 rounded text-sm font-medium transition-colors"

@@ -9,6 +9,8 @@ import OrderModal from '../components/OrderModal';
 import OrdersPage from './OrdersPage';
 import AdminPanel from './AdminPanel';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AddToCartModal from '../components/AddToCartModal';
+import CartModal from '../components/CartModal';
 import { useEffect, useRef } from 'react';
 
 const Dashboard = () => {
@@ -18,13 +20,19 @@ const Dashboard = () => {
   const [showModal, setShowModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [filter, setFilter] = useState('all'); // all, tabaco, producto, low-stock, out-of-stock
   const [searchTerm, setSearchTerm] = useState('');
   const searchInputRef = useRef(null);
 
-  const filteredItems = items.filter(item => {
-    // Filtro por tipo
+  // Filtrar solo tabacos
+  const tobaccoItems = items.filter(item => item.tipo === 'Tabaco');
+
+  const filteredItems = tobaccoItems.filter(item => {
+    // Filtro por stock
     let typeMatch = false;
     if (filter === 'all') {
       typeMatch = true;
@@ -32,8 +40,6 @@ const Dashboard = () => {
       typeMatch = item.stock < item.minStock && item.stock > 0;
     } else if (filter === 'out-of-stock') {
       typeMatch = item.stock === 0;
-    } else {
-      typeMatch = item.tipo.toLowerCase() === filter;
     }
     
     // Filtro por búsqueda (nombre y marca)
@@ -44,9 +50,9 @@ const Dashboard = () => {
     return typeMatch && searchMatch;
   });
 
-  const lowStockItems = items.filter(item => item.stock < item.minStock && item.stock > 0);
-  const outOfStockItems = items.filter(item => item.stock === 0);
-  const restockItems = items.filter(item => item.stock < item.minStock);
+  const lowStockItems = tobaccoItems.filter(item => item.stock < item.minStock && item.stock > 0);
+  const outOfStockItems = tobaccoItems.filter(item => item.stock === 0);
+  const restockItems = tobaccoItems.filter(item => item.stock < item.minStock);
 
   const handleAddProduct = () => {
     setEditingItem(null);
@@ -76,9 +82,24 @@ const Dashboard = () => {
   };
 
   const handleDeleteProduct = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este producto?')) {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
       await deleteItem(id);
     }
+  };
+
+  // Funciones del carrito
+  const handleAddToCart = (product) => {
+    setSelectedProduct(product);
+    setShowAddToCartModal(true);
+  };
+
+  const handleOpenCart = () => {
+    setShowCartModal(true);
+  };
+
+  const handleCloseAddToCartModal = () => {
+    setShowAddToCartModal(false);
+    setSelectedProduct(null);
   };
 
   const handleSearchChange = (e) => {
@@ -129,7 +150,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
-      <Header user={user} />
+      <Header user={user} onCartClick={handleOpenCart} />
       
           {/* Navigation Tab Bar */}
           <div className="bg-gray-800 border-b border-gray-700">
@@ -473,6 +494,7 @@ const Dashboard = () => {
           searchTerm={searchTerm}
           onEdit={handleEditProduct}
           onDelete={handleDeleteProduct}
+          onAddToCart={handleAddToCart}
         />
 
         {/* Product Modal */}
@@ -499,6 +521,18 @@ const Dashboard = () => {
           isOpen={showOrderModal}
           onClose={() => setShowOrderModal(false)}
           items={items}
+        />
+
+        {/* Cart Modals */}
+        <AddToCartModal
+          isOpen={showAddToCartModal}
+          onClose={handleCloseAddToCartModal}
+          product={selectedProduct}
+        />
+
+        <CartModal
+          isOpen={showCartModal}
+          onClose={() => setShowCartModal(false)}
         />
       </main>
       )}
