@@ -21,29 +21,44 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Usar useMemo para evitar recálculos innecesarios
-  const itemsNeedingRestock = useMemo(() => {
-    return items.filter(item => item.stock < item.minStock && item.stock > 0);
+  // Filtrar solo tabacos de todos los items
+  const allTobaccoItems = useMemo(() => {
+    return items.filter(item => item.tipo === 'Tabaco');
   }, [items]);
+
+  // Items que necesitan reposición (para mostrar alertas)
+  const itemsNeedingRestock = useMemo(() => {
+    return allTobaccoItems.filter(item => item.stock < item.minStock);
+  }, [allTobaccoItems]);
   
-  // Obtener marcas únicas de items que necesitan reposición
-  const brandsNeedingRestock = useMemo(() => {
-    return [...new Set(itemsNeedingRestock.map(item => item.marca))].sort();
-  }, [itemsNeedingRestock]);
+  // Obtener todas las marcas de tabacos
+  const allTobaccoBrands = useMemo(() => {
+    return [...new Set(allTobaccoItems.map(item => item.marca))].sort();
+  }, [allTobaccoItems]);
 
   // Inicializar cantidades editables solo cuando se abra el modal por primera vez
   useEffect(() => {
     if (isOpen && !isInitialized) {
       const initialQuantities = {};
-      itemsNeedingRestock.forEach(item => {
-        initialQuantities[item.id] = Math.max(0, item.minStock - item.stock);
+      allTobaccoItems.forEach(item => {
+        // Si el stock está en 0 o por debajo del mínimo, sugerir cantidad
+        if (item.stock === 0) {
+          // Si no hay stock, sugerir el stock mínimo o 10 si no tiene mínimo
+          initialQuantities[item.id] = item.minStock > 0 ? item.minStock : 10;
+        } else if (item.stock < item.minStock) {
+          // Si está por debajo del mínimo, sugerir la diferencia
+          initialQuantities[item.id] = item.minStock - item.stock;
+        } else {
+          // Si tiene stock suficiente, poner 0 por defecto
+          initialQuantities[item.id] = 0;
+        }
       });
       setEditableQuantities(initialQuantities);
       setIsInitialized(true);
     } else if (!isOpen) {
       setIsInitialized(false);
     }
-  }, [isOpen, itemsNeedingRestock, isInitialized]);
+  }, [isOpen, allTobaccoItems, isInitialized]);
 
   /**
    * Actualiza la cantidad editable de un producto específico
@@ -70,12 +85,12 @@ const OrderModal = ({ isOpen, onClose, items }) => {
   /**
    * Genera los datos del pedido general agrupados por marca
    * @function generateGeneralOrder
-   * @returns {Array} Array de objetos con marca e items filtrados por cantidad > 0
-   * @description Agrupa productos por marca y filtra solo los que tienen cantidad solicitada
+   * @returns {Array} Array de objetos con marca e items (incluye todos los tabacos)
+   * @description Agrupa TODOS los tabacos por marca, incluyendo los que tienen cantidad 0
    */
   // Generar pedido general agrupado por marca
   const generateGeneralOrder = () => {
-    const groupedByBrand = itemsNeedingRestock.reduce((acc, item) => {
+    const groupedByBrand = allTobaccoItems.reduce((acc, item) => {
       if (!acc[item.marca]) {
         acc[item.marca] = [];
       }
@@ -90,26 +105,25 @@ const OrderModal = ({ isOpen, onClose, items }) => {
           ...item,
           unitsNeeded: editableQuantities[item.id] || 0
         }))
-        .filter(item => item.unitsNeeded > 0) // Solo incluir items con cantidad > 0
-    })).filter(brandGroup => brandGroup.items.length > 0); // Solo marcas con items
+        // Incluir TODOS los items, no filtrar por cantidad > 0
+    }));
   };
 
   /**
    * Genera los datos del pedido para una marca específica
    * @function generateBrandOrder
    * @param {string} brand - Nombre de la marca a procesar
-   * @returns {Object} Objeto con marca e items filtrados por cantidad > 0
-   * @description Filtra productos de una marca específica que tienen cantidad solicitada
+   * @returns {Object} Objeto con marca e items de esa marca
+   * @description Obtiene todos los productos de tabaco de una marca específica con cantidades sugeridas
    */
   // Generar pedido por marca específica
   const generateBrandOrder = (brand) => {
-    const brandItems = itemsNeedingRestock.filter(item => item.marca === brand);
+    const brandItems = allTobaccoItems.filter(item => item.marca === brand);
     const filteredItems = brandItems
       .map(item => ({
         ...item,
         unitsNeeded: editableQuantities[item.id] || 0
-      }))
-      .filter(item => item.unitsNeeded > 0); // Solo incluir items con cantidad > 0
+      })); // Incluir todos los items de la marca
     
     return {
       brand,
