@@ -21,7 +21,7 @@ const InventoryList = ({ items, loading, onEdit, onDelete, onAddToCart, searchTe
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-gray-500 text-2xl">{searchTerm ? '�' : '�📦'}</span>
+          <span className="text-gray-500 text-2xl">{searchTerm ? '🔍' : '📦'}</span>
         </div>
         <h3 className="text-lg font-medium text-gray-300 mb-2">
           {searchTerm ? 'No se encontraron productos' : 'No hay productos'}

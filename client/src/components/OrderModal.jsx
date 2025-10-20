@@ -519,7 +519,7 @@ const OrderModal = ({ isOpen, onClose, items }) => {
               disabled={(orderType === 'brand' && !selectedBrand) || isSaving}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
-              <span className="mr-2">�</span>
+              <span className="mr-2">📝</span>
               {isSaving ? 'Guardando...' : 'Crear Pedido'}
             </button>
           </div>

@@ -37,7 +37,7 @@ const Header = ({ user, onCartClick }) => {
               className="relative bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg transition-colors flex items-center space-x-2"
               title="Ver pedido"
             >
-              <span className="text-lg">�</span>
+              <span className="text-lg">📝</span>
               <span className="hidden sm:inline text-sm font-medium">Pedido</span>
               {getTotalItems() > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">

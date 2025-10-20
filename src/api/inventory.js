@@ -143,17 +143,76 @@ router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Verificar si el producto existe
+    const existingItem = await prisma.inventoryItem.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        orderItems: {
+          select: {
+            id: true,
+            order: {
+              select: {
+                orderNumber: true,
+                status: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!existingItem) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Producto no encontrado" 
+      });
+    }
+
+    // Verificar si el producto está siendo usado en pedidos
+    if (existingItem.orderItems.length > 0) {
+      const activeOrders = existingItem.orderItems
+        .filter(item => item.order.status !== 'cancelled')
+        .map(item => item.order.orderNumber);
+
+      if (activeOrders.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `No se puede eliminar este producto porque está siendo usado en los siguientes pedidos: ${activeOrders.join(', ')}. Cancela o completa estos pedidos primero.`,
+          relatedOrders: activeOrders
+        });
+      }
+    }
+
+    // Si llegamos aquí, podemos eliminar el producto
     await prisma.inventoryItem.delete({
       where: { id: parseInt(id) }
     });
 
-    res.json({ success: true, message: "Producto eliminado" });
+    res.json({ 
+      success: true, 
+      message: "Producto eliminado correctamente" 
+    });
+
   } catch (error) {
     if (error.code === 'P2025') {
-      return res.status(404).json({ error: "Producto no encontrado" });
+      return res.status(404).json({ 
+        success: false, 
+        error: "Producto no encontrado" 
+      });
     }
+    
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        success: false, 
+        error: "No se puede eliminar este producto porque está siendo usado en pedidos activos. Completa o cancela los pedidos relacionados primero." 
+      });
+    }
+
     console.error("Error eliminando producto:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    res.status(500).json({ 
+      success: false, 
+      error: "Error interno del servidor" 
+    });
   }
 });
 

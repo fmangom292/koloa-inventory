@@ -83,7 +83,16 @@ const Dashboard = () => {
 
   const handleDeleteProduct = async (id) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-      await deleteItem(id);
+      const result = await deleteItem(id);
+      
+      if (!result.success && result.error) {
+        // Mostrar mensaje específico para errores de relaciones
+        if (result.error.includes('pedidos')) {
+          alert(`No se pudo eliminar el producto:\n\n${result.error}\n\nSugerencia: Ve a la sección de Pedidos para gestionar los pedidos relacionados.`);
+        } else {
+          alert(`Error al eliminar el producto: ${result.error}`);
+        }
+      }
     }
   };
 
@@ -174,7 +183,7 @@ const Dashboard = () => {
                       : 'text-gray-300 hover:text-white hover:bg-gray-700'
                   }`}
                 >
-                  🛒 Pedidos
+                  📝 Pedidos
                 </button>
                 {user?.role === 'admin' && (
                   <button

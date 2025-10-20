@@ -76,7 +76,7 @@ const CartModal = ({ isOpen, onClose }) => {
 				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-700">
 					<div className="flex items-center space-x-3">
-						<span className="text-2xl">�</span>
+						<span className="text-2xl">📝</span>
 						<h2 className="text-xl font-semibold text-gray-100">
 							Pedido de Reposición
 						</h2>
@@ -98,7 +98,7 @@ const CartModal = ({ isOpen, onClose }) => {
 				<div className="flex-1 overflow-y-auto">
 					{cartItems.length === 0 ? (
 						<div className="flex flex-col items-center justify-center h-64 text-gray-400">
-							<span className="text-6xl mb-4">�</span>
+							<span className="text-6xl mb-4">📝</span>
 							<h3 className="text-lg font-medium mb-2">No hay productos en el pedido</h3>
 							<p className="text-sm">Añade algunos tabacos para hacer un pedido de reposición</p>
 						</div>

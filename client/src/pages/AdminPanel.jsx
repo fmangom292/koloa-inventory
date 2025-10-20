@@ -262,7 +262,7 @@ const AdminPanel = () => {
 											<p className="text-2xl font-bold text-gray-100">{stats.orders.total}</p>
 										</div>
 										<div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center">
-											<span className="text-purple-400 text-xl">🛒</span>
+											<span className="text-purple-400 text-xl">�</span>
 										</div>
 									</div>
 								</div>
