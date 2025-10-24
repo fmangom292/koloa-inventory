@@ -22,6 +22,7 @@ model User {
   
   // Relación con pedidos
   orders         Order[]
+  // Sin relación con logs - mantenemos histórico independiente
 
   @@unique([code])
 }
@@ -76,4 +77,23 @@ model OrderItem {
   inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id])
   
   @@unique([orderId, inventoryItemId]) // Un producto por pedido
+}
+
+model ApiLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     // ID del usuario que realizó la acción (histórico)
+  userName    String?  // Nombre del usuario (guardado para histórico)
+  userCode    String?  // Código del usuario (guardado para histórico)
+  userRole    String?  // Rol del usuario en el momento de la acción
+  method      String   // GET, POST, PUT, DELETE
+  endpoint    String   // Ruta de la API (/api/inventory, /api/auth/login, etc.)
+  statusCode  Int      // Código de respuesta HTTP
+  ipAddress   String?  // IP del cliente
+  userAgent   String?  // Información del navegador
+  requestBody String?  // Cuerpo de la petición (JSON serializado)
+  responseTime Int     // Tiempo de respuesta en milisegundos
+  errorMessage String? // Mensaje de error si la petición falló
+  timestamp   DateTime @default(now())
+  
+  // Sin relaciones - datos históricos independientes
 }

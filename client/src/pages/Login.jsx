@@ -78,7 +78,7 @@ const Login = () => {
                   Código PIN
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="••••"

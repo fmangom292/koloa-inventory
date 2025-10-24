@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { usersAPI } from '../utils/usersAPI';
 import LoadingSpinner from '../components/LoadingSpinner';
+import LogsViewer from '../components/LogsViewer';
 
 /**
  * Panel de administración para gestión de usuarios y sistema
@@ -169,6 +170,16 @@ const AdminPanel = () => {
 							}`}
 						>
 							👥 Usuarios
+						</button>
+						<button
+							onClick={() => setActiveTab('logs')}
+							className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+								activeTab === 'logs'
+									? 'bg-green-600 text-white'
+									: 'text-gray-300 hover:text-white hover:bg-gray-700'
+							}`}
+						>
+							📋 Logs
 						</button>
 						<button
 							onClick={() => setActiveTab('system')}
@@ -385,6 +396,11 @@ const AdminPanel = () => {
 							</div>
 						</div>
 					</div>
+				)}
+
+				{/* Logs Tab */}
+				{activeTab === 'logs' && (
+					<LogsViewer />
 				)}
 
 				{/* System Tab */}
