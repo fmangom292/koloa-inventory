@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usersAPI } from '../utils/usersAPI';
 import LoadingSpinner from '../components/LoadingSpinner';
 import LogsViewer from '../components/LogsViewer';
+import ExportModal from '../components/ExportModal';
 
 /**
  * Panel de administración para gestión de usuarios y sistema
@@ -20,6 +21,7 @@ const AdminPanel = () => {
 	const [error, setError] = useState('');
 	const [showUserModal, setShowUserModal] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
+	const [showExportModal, setShowExportModal] = useState(false);
 
 	// Verificar que el usuario sea administrador
 	if (user?.role !== 'admin') {
@@ -414,8 +416,11 @@ const AdminPanel = () => {
 								<div className="card-body">
 									<h3 className="text-lg font-medium text-white mb-4">Base de Datos</h3>
 									<div className="space-y-3">
-										<button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-											📊 Exportar Datos
+										<button 
+											onClick={() => setShowExportModal(true)}
+											className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+										>
+											📊 Volcar Datos
 										</button>
 										<button className="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors">
 											🔄 Hacer Respaldo
@@ -448,6 +453,13 @@ const AdminPanel = () => {
 					</div>
 				)}
 			</main>
+
+			{/* Export Modal */}
+			{showExportModal && (
+				<ExportModal
+					onClose={() => setShowExportModal(false)}
+				/>
+			)}
 
 			{/* User Modal */}
 			{showUserModal && (

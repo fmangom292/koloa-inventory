@@ -5,6 +5,9 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 const prisma = new PrismaClient();
 const router = Router();
 
+// Aplicar middleware de autenticación a todas las rutas del router
+router.use(authMiddleware);
+
 /**
  * GET /api/logs - Obtener logs de API con paginación y filtros
  * @function getLogs
@@ -12,8 +15,16 @@ const router = Router();
  * @param {Object} res - Response object
  * @description Retorna los logs de API con opciones de filtrado y paginación
  */
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
 	try {
+		// Verificar que el usuario tenga permisos (solo administradores pueden ver logs)
+		if (req.user?.role !== 'admin') {
+			return res.status(403).json({
+				success: false,
+				message: 'Acceso denegado. Se requieren permisos de administrador.'
+			});
+		}
+
 		const {
 			page = 1,
 			limit = 50,
@@ -82,8 +93,16 @@ router.get('/', authMiddleware, async (req, res) => {
  * @param {Object} res - Response object
  * @description Retorna estadísticas resumidas de los logs de API
  */
-router.get('/stats', authMiddleware, async (req, res) => {
+router.get('/stats', async (req, res) => {
 	try {
+		// Verificar que el usuario tenga permisos (solo administradores pueden ver logs)
+		if (req.user?.role !== 'admin') {
+			return res.status(403).json({
+				success: false,
+				message: 'Acceso denegado. Se requieren permisos de administrador.'
+			});
+		}
+
 		const { startDate, endDate } = req.query;
 		
 		// Construir filtro de fecha
@@ -158,7 +177,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
  * @param {Object} res - Response object
  * @description Elimina logs más antiguos que el número de días especificado
  */
-router.delete('/cleanup', authMiddleware, async (req, res) => {
+router.delete('/cleanup', async (req, res) => {
 	try {
 		// Solo permitir a administradores
 		if (req.user.role !== 'admin') {

@@ -4,28 +4,17 @@ import { verifyToken } from '../utils/jwt.js';
 const prisma = new PrismaClient();
 
 /**
- * Array de rutas que no queremos registrar en el log porque se repiten mucho
+ * Array de rutas que no queremos registrar en el log para evitar spam
  * @type {string[]}
- * @description Rutas base que serán excluidas del sistema de logging automático.
- * Se excluye cualquier ruta que COMIENCE con estos patrones.
+ * @description Rutas que se ejecutan muy frecuentemente y no necesitamos registrar
  */
 const EXCLUDED_ROUTES = [
-	'/inventory',           // GET - Listar inventario (se llama frecuentemente)
-	'/auth/verify',         // POST - Verificar token (se llama en cada ruta protegida)
-	'/health',              // GET - Health check
-	'/ping',                // GET - Ping endpoint
-	'/logs'                 // Todas las rutas de logs (evitar recursión)
+	'/api/inventory',       // GET - Listar inventario (se llama mucho)
+	'/api/auth/verify',     // POST - Verificar token 
+	'/api/health',          // GET - Health check
+	'/api/ping',            // GET - Ping endpoint
+	'/api/logs/stats'       // GET - Estadísticas de logs (evitar spam)
 ];
-
-/**
- * Array de métodos HTTP que no queremos registrar para ciertas rutas
- * @type {Object}
- * @description Configuración específica de métodos por ruta
- */
-const EXCLUDED_METHODS = {
-	'/api/inventory': ['GET'],  // Solo excluir GET, pero registrar POST, PUT, DELETE
-	'/api/orders': ['GET']      // Solo excluir GET de órdenes
-};
 
 /**
  * Middleware para registrar llamadas a la API en la base de datos
@@ -41,8 +30,7 @@ const apiLogger = async (req, res, next) => {
 	const userAgent = req.get('User-Agent');
 
 	// Verificar si la ruta debe ser excluida
-	const shouldExclude = EXCLUDED_ROUTES.some(route => endpoint.startsWith(route)) || 
-		(EXCLUDED_METHODS[endpoint] && EXCLUDED_METHODS[endpoint].includes(method));
+	const shouldExclude = EXCLUDED_ROUTES.some(route => endpoint.startsWith(route));
 
 	if (shouldExclude) {
 		return next();
