@@ -18,6 +18,7 @@ const authMiddleware = (req, res, next) => {
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
+        success: false,
         error: "Token de autenticación requerido" 
       });
     }
@@ -37,7 +38,9 @@ const authMiddleware = (req, res, next) => {
   } catch (error) {
     console.error('Auth middleware error:', error.message);
     return res.status(401).json({ 
-      error: "Token inválido o expirado" 
+      success: false,
+      error: "Token inválido o expirado",
+      ...(process.env.NODE_ENV === 'development' && { details: error.message })
     });
   }
 };

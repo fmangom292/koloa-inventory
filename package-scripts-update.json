@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "build": "cd client && npm run build",
+    "prod:test": "NODE_ENV=production node src/server.js",
+    "prisma:dev": "prisma migrate dev && prisma generate",
+    "prisma:deploy": "prisma migrate deploy && prisma generate",
+    "seed": "node prisma/seed.js"
+  }
+}
