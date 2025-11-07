@@ -391,8 +391,9 @@ router.get("/inventory-pdf", async (req, res) => {
 			}
 		});
 
-		// Generar buffer del PDF
-		const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+		// Generar PDF como buffer
+		const pdfOutput = doc.output('arraybuffer');
+		const pdfBuffer = Buffer.from(pdfOutput);
 
 		// Configurar headers para descarga
 		const filename = `inventario-koloa-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -401,7 +402,7 @@ router.get("/inventory-pdf", async (req, res) => {
 		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 		res.setHeader('Content-Length', pdfBuffer.length);
 
-		res.send(pdfBuffer);
+		res.end(pdfBuffer, 'binary');
 	} catch (error) {
 		console.error("Error exportando inventario a PDF:", error);
 		res.status(500).json({ error: "Error interno del servidor" });
