@@ -13,8 +13,7 @@ const ensureApiJson = (req, res, next) => {
 	}
 
 	// Excluir rutas que devuelven archivos binarios (Excel, PDF, etc.)
-	const BINARY_ROUTES = ['/api/export/inventory-pdf', '/api/export/orders-pdf'];
-	if (BINARY_ROUTES.includes(req.path)) {
+	if (req.path.includes('/export/') && (req.path.endsWith('-pdf') || req.path.endsWith('.pdf'))) {
 		return next();
 	}
 
