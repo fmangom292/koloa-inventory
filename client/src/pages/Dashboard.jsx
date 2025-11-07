@@ -12,6 +12,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartModal from '../components/CartModal';
 import { useEffect, useRef } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -138,46 +140,137 @@ const Dashboard = () => {
   /**
    * Genera y descarga un PDF con todo el inventario actual
    * @function handleGenerateInventoryPDF
-   * @async
    * @returns {void} No retorna valor
-   * @description Llama al endpoint de exportación PDF y descarga el archivo generado
+   * @description Genera el PDF localmente en el navegador con todos los productos del inventario
    */
-  const handleGenerateInventoryPDF = async () => {
+  const handleGenerateInventoryPDF = () => {
     try {
       setIsGeneratingPDF(true);
-      
-      const token = localStorage.getItem('koloaToken');
-      if (!token) {
-        alert('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-        return;
-      }
 
-      const response = await fetch('/api/export/inventory-pdf', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Crear documento PDF en orientación horizontal
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Configurar fuente
+      doc.setFont('helvetica');
+      
+      // Título del documento
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text('INVENTARIO KOLOA', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+      
+      // Información del documento
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generado el: ${new Date().toLocaleString('es-ES')}`, 14, 25);
+      doc.text(`Total de productos: ${items.length}`, 14, 30);
+
+      // Calcular totales
+      const totalStock = items.reduce((sum, item) => sum + item.stock, 0);
+      const valorTotal = items.reduce((sum, item) => sum + (item.stock * item.precio), 0);
+      const sinStock = items.filter(item => item.stock === 0).length;
+      const stockBajo = items.filter(item => item.stock < item.minStock && item.stock > 0).length;
+
+      doc.text(`Total unidades: ${totalStock}`, 14, 35);
+      doc.text(`Valor total: ${valorTotal.toFixed(2)}€`, 80, 35);
+      doc.text(`Sin stock: ${sinStock}`, 140, 35);
+      doc.text(`Stock bajo: ${stockBajo}`, 180, 35);
+
+      // Preparar datos para la tabla
+      const tableData = items.map(item => {
+        let estadoStock = 'Normal';
+        if (item.stock === 0) {
+          estadoStock = 'Sin Stock';
+        } else if (item.stock < item.minStock) {
+          estadoStock = 'Stock Bajo';
+        }
+
+        return [
+          item.tipo,
+          item.marca,
+          item.nombre,
+          `${item.peso}g`,
+          item.stock.toString(),
+          item.minStock.toString(),
+          estadoStock,
+          `${item.precio.toFixed(2)}€`,
+          `${(item.stock * item.precio).toFixed(2)}€`
+        ];
+      });
+
+      // Generar tabla con autoTable
+      autoTable(doc, {
+        startY: 45,
+        head: [['Tipo', 'Marca', 'Nombre', 'Peso', 'Stock', 'Min', 'Estado', 'Precio', 'Valor']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          overflow: 'linebreak'
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { cellWidth: 20, halign: 'left' },   // Tipo
+          1: { cellWidth: 30, halign: 'left' },   // Marca
+          2: { cellWidth: 60, halign: 'left' },   // Nombre
+          3: { cellWidth: 18, halign: 'center' }, // Peso
+          4: { cellWidth: 15, halign: 'center' }, // Stock
+          5: { cellWidth: 15, halign: 'center' }, // Min
+          6: { cellWidth: 25, halign: 'center' }, // Estado
+          7: { cellWidth: 20, halign: 'right' },  // Precio
+          8: { cellWidth: 25, halign: 'right' }   // Valor
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        didParseCell: function(data) {
+          // Colorear las celdas de estado según el valor
+          if (data.column.index === 6) {
+            const cellText = data.cell.text[0];
+            if (cellText.includes('Sin Stock')) {
+              data.cell.styles.textColor = [231, 76, 60]; // Rojo
+              data.cell.styles.fontStyle = 'bold';
+            } else if (cellText.includes('Bajo')) {
+              data.cell.styles.textColor = [243, 156, 18]; // Naranja
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [39, 174, 96]; // Verde
+            }
+          }
+        },
+        didDrawPage: function(data) {
+          // Pie de página
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageSize = doc.internal.pageSize;
+          const pageHeight = pageSize.height || pageSize.getHeight();
+          
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text(
+            `Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${pageCount}`,
+            pageSize.width / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          );
+          doc.text(
+            'Koloa Inventory System',
+            14,
+            pageHeight - 10
+          );
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al generar el PDF');
-      }
-
-      // Convertir la respuesta a blob
-      const blob = await response.blob();
-      
-      // Crear URL del blob y iniciar descarga
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `inventario-koloa-${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpiar
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Guardar PDF
+      doc.save(`inventario-koloa-${new Date().toISOString().split('T')[0]}.pdf`);
 
     } catch (error) {
       console.error('Error generando PDF:', error);
