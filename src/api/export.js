@@ -2,6 +2,9 @@ import express from "express";
 import { PrismaClient } from "@prisma/client";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import XLSX from 'xlsx';
+import pkg from 'jspdf';
+const { jsPDF } = pkg;
+import 'jspdf-autotable';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -238,6 +241,169 @@ router.get("/orders", async (req, res) => {
 		res.send(buffer);
 	} catch (error) {
 		console.error("Error exportando pedidos:", error);
+		res.status(500).json({ error: "Error interno del servidor" });
+	}
+});
+
+/**
+ * Exporta datos del inventario en formato PDF
+ * @function exportInventoryPDF
+ * @async
+ * @param {Object} req - Objeto request de Express
+ * @param {Object} res - Objeto response de Express
+ * @returns {Promise<Buffer>} Archivo PDF con los datos del inventario
+ * @description Genera un archivo PDF con todos los productos del inventario
+ */
+router.get("/inventory-pdf", async (req, res) => {
+	try {
+		// Obtener todos los productos del inventario
+		const items = await prisma.inventoryItem.findMany({
+			orderBy: [
+				{ tipo: 'asc' },
+				{ marca: 'asc' },
+				{ nombre: 'asc' }
+			]
+		});
+
+		if (items.length === 0) {
+			return res.status(404).json({ error: "No hay productos en el inventario para exportar" });
+		}
+
+		// Crear documento PDF
+		const doc = new jsPDF({
+			orientation: 'landscape',
+			unit: 'mm',
+			format: 'a4'
+		});
+
+		// Configurar fuente y colores
+		doc.setFont('helvetica');
+		
+		// Título del documento
+		doc.setFontSize(18);
+		doc.setTextColor(40, 40, 40);
+		doc.text('INVENTARIO KOLOA', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+		
+		// Información del documento
+		doc.setFontSize(10);
+		doc.setTextColor(100, 100, 100);
+		doc.text(`Generado el: ${new Date().toLocaleString('es-ES')}`, 14, 25);
+		doc.text(`Total de productos: ${items.length}`, 14, 30);
+
+		// Calcular totales
+		const totalStock = items.reduce((sum, item) => sum + item.stock, 0);
+		const valorTotal = items.reduce((sum, item) => sum + (item.stock * item.precio), 0);
+		const sinStock = items.filter(item => item.stock === 0).length;
+		const stockBajo = items.filter(item => item.stock < item.minStock && item.stock > 0).length;
+
+		doc.text(`Total unidades: ${totalStock}`, 14, 35);
+		doc.text(`Valor total: ${valorTotal.toFixed(2)}€`, 80, 35);
+		doc.text(`Sin stock: ${sinStock}`, 140, 35);
+		doc.text(`Stock bajo: ${stockBajo}`, 180, 35);
+
+		// Preparar datos para la tabla
+		const tableData = items.map(item => {
+			let estadoStock = 'Normal';
+			if (item.stock === 0) {
+				estadoStock = 'Sin Stock';
+			} else if (item.stock < item.minStock) {
+				estadoStock = 'Stock Bajo';
+			}
+
+			return [
+				item.tipo,
+				item.marca,
+				item.nombre,
+				`${item.peso}g`,
+				item.stock.toString(),
+				item.minStock.toString(),
+				estadoStock,
+				`${item.precio.toFixed(2)}€`,
+				`${(item.stock * item.precio).toFixed(2)}€`
+			];
+		});
+
+		// Generar tabla con autoTable
+		doc.autoTable({
+			startY: 45,
+			head: [['Tipo', 'Marca', 'Nombre', 'Peso', 'Stock', 'Min', 'Estado', 'Precio', 'Valor']],
+			body: tableData,
+			theme: 'grid',
+			styles: {
+				fontSize: 8,
+				cellPadding: 2,
+				overflow: 'linebreak'
+			},
+			headStyles: {
+				fillColor: [41, 128, 185],
+				textColor: 255,
+				fontStyle: 'bold',
+				halign: 'center'
+			},
+			columnStyles: {
+				0: { cellWidth: 20, halign: 'left' },   // Tipo
+				1: { cellWidth: 30, halign: 'left' },   // Marca
+				2: { cellWidth: 60, halign: 'left' },   // Nombre
+				3: { cellWidth: 18, halign: 'center' }, // Peso
+				4: { cellWidth: 15, halign: 'center' }, // Stock
+				5: { cellWidth: 15, halign: 'center' }, // Min
+				6: { cellWidth: 25, halign: 'center' }, // Estado
+				7: { cellWidth: 20, halign: 'right' },  // Precio
+				8: { cellWidth: 25, halign: 'right' }   // Valor
+			},
+			alternateRowStyles: {
+				fillColor: [245, 245, 245]
+			},
+			didParseCell: function(data) {
+				// Colorear las celdas de estado según el valor
+				if (data.column.index === 6) {
+					const cellText = data.cell.text[0];
+					if (cellText.includes('Sin Stock')) {
+						data.cell.styles.textColor = [231, 76, 60]; // Rojo
+						data.cell.styles.fontStyle = 'bold';
+					} else if (cellText.includes('Bajo')) {
+						data.cell.styles.textColor = [243, 156, 18]; // Naranja
+						data.cell.styles.fontStyle = 'bold';
+					} else {
+						data.cell.styles.textColor = [39, 174, 96]; // Verde
+					}
+				}
+			},
+			didDrawPage: function(data) {
+				// Pie de página
+				const pageCount = doc.internal.getNumberOfPages();
+				const pageSize = doc.internal.pageSize;
+				const pageHeight = pageSize.height || pageSize.getHeight();
+				
+				doc.setFontSize(8);
+				doc.setTextColor(150);
+				doc.text(
+					`Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${pageCount}`,
+					pageSize.width / 2,
+					pageHeight - 10,
+					{ align: 'center' }
+				);
+				doc.text(
+					'Koloa Inventory System',
+					14,
+					pageHeight - 10
+				);
+			}
+		});
+
+		// Generar buffer del PDF
+		const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+
+		// Configurar headers para descarga
+		const filename = `inventario-koloa-${new Date().toISOString().split('T')[0]}.pdf`;
+		
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+		res.setHeader('Content-Length', pdfBuffer.length);
+
+		res.send(pdfBuffer);
+	} catch (error) {
+		console.error("Error exportando inventario a PDF:", error);
 		res.status(500).json({ error: "Error interno del servidor" });
 	}
 });

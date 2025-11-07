@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [filter, setFilter] = useState('all'); // all, tabaco, producto, low-stock, out-of-stock
   const [searchTerm, setSearchTerm] = useState('');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const searchInputRef = useRef(null);
 
   // Filtrar solo tabacos
@@ -132,6 +133,58 @@ const Dashboard = () => {
   const clearAllFilters = () => {
     setSearchTerm('');
     setFilter('all');
+  };
+
+  /**
+   * Genera y descarga un PDF con todo el inventario actual
+   * @function handleGenerateInventoryPDF
+   * @async
+   * @returns {void} No retorna valor
+   * @description Llama al endpoint de exportación PDF y descarga el archivo generado
+   */
+  const handleGenerateInventoryPDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+      
+      const token = localStorage.getItem('koloaToken');
+      if (!token) {
+        alert('No hay sesión activa. Por favor, inicia sesión nuevamente.');
+        return;
+      }
+
+      const response = await fetch('/api/export/inventory-pdf', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar el PDF');
+      }
+
+      // Convertir la respuesta a blob
+      const blob = await response.blob();
+      
+      // Crear URL del blob y iniciar descarga
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inventario-koloa-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alert(`Error al generar el PDF: ${error.message}`);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   // Atajo de teclado para enfocar el buscador (Ctrl/Cmd + K)
@@ -392,7 +445,27 @@ const Dashboard = () => {
               </div>
               
               <div className="w-full sm:w-auto">
-                <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-2 sm:justify-end">
+                <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-2 sm:justify-end">
+                  <button
+                    onClick={handleGenerateInventoryPDF}
+                    disabled={isGeneratingPDF || tobaccoItems.length === 0}
+                    className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Generar PDF del inventario completo"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                        <span className="hidden sm:inline">Generando...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-1 sm:mr-2">📄</span>
+                        <span className="hidden sm:inline">PDF Inventario</span>
+                        <span className="sm:hidden">PDF</span>
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={() => setShowReportsModal(true)}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center"
