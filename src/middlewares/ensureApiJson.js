@@ -12,6 +12,12 @@ const ensureApiJson = (req, res, next) => {
 		return next();
 	}
 
+	// Excluir rutas que devuelven archivos binarios (Excel, PDF, etc.)
+	const BINARY_ROUTES = ['/api/export/inventory-pdf', '/api/export/orders-pdf'];
+	if (BINARY_ROUTES.includes(req.path)) {
+		return next();
+	}
+
 	// Interceptar el método send de Express
 	const originalSend = res.send;
 	
