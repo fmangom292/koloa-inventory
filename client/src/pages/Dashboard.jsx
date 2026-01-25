@@ -31,14 +31,16 @@ const Dashboard = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const searchInputRef = useRef(null);
 
-  // Filtrar solo tabacos
-  const tobaccoItems = items.filter(item => item.tipo === 'Tabaco');
-
-  const filteredItems = tobaccoItems.filter(item => {
-    // Filtro por stock
+  // Filtrar productos según tipo y estado
+  const filteredItems = items.filter(item => {
+    // Filtro por tipo de producto
     let typeMatch = false;
     if (filter === 'all') {
       typeMatch = true;
+    } else if (filter === 'tabaco') {
+      typeMatch = item.tipo === 'Tabaco';
+    } else if (filter === 'producto') {
+      typeMatch = item.tipo === 'Producto';
     } else if (filter === 'low-stock') {
       typeMatch = item.stock < item.minStock && item.stock > 0;
     } else if (filter === 'out-of-stock') {
@@ -53,9 +55,9 @@ const Dashboard = () => {
     return typeMatch && searchMatch;
   });
 
-  const lowStockItems = tobaccoItems.filter(item => item.stock < item.minStock && item.stock > 0);
-  const outOfStockItems = tobaccoItems.filter(item => item.stock === 0);
-  const restockItems = tobaccoItems.filter(item => item.stock < item.minStock);
+  const lowStockItems = items.filter(item => item.stock < item.minStock && item.stock > 0);
+  const outOfStockItems = items.filter(item => item.stock === 0);
+  const restockItems = items.filter(item => item.stock < item.minStock);
 
   const handleAddProduct = () => {
     setEditingItem(null);
@@ -541,7 +543,7 @@ const Dashboard = () => {
                 <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-2 sm:justify-end">
                   <button
                     onClick={handleGenerateInventoryPDF}
-                    disabled={isGeneratingPDF || tobaccoItems.length === 0}
+                    disabled={isGeneratingPDF || items.length === 0}
                     className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Generar PDF del inventario completo"
                   >
