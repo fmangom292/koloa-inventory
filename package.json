@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "start": "npm run deploy",
     "deploy": "git pull && npm run install:server && npm run install:client && npm run build:client && npm run start ",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
